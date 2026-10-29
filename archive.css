@@ -10,25 +10,15 @@
 
 @font-face {
   font-family: vel;
-  src:
-    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Bold.woff2")
-      format("woff2"),
-    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Bold.woff")
-      format("woff"),
-    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/otf/Velvelyne-Bold.otf")
-      format("opentype");
+  src: url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/otf/Velvelyne-Bold.otf")
+    format("opentype");
   font-weight: bold;
   font-display: swap;
 }
 @font-face {
   font-family: vel;
-  src:
-    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Regular.woff2")
-      format("woff2"),
-    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Regular.woff")
-      format("woff"),
-    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/otf/Velvelyne-Regular.otf")
-      format("opentype");
+  src: url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/otf/Velvelyne-Regular.otf")
+    format("opentype");
   font-style: normal;
   font-weight: normal;
   font-display: swap;
