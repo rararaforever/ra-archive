@@ -14,7 +14,9 @@
     url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Bold.woff2")
       format("woff2"),
     url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Bold.woff")
-      format("woff");
+      format("woff"),
+    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Bold.otf")
+      format("opentype");
   font-weight: bold;
   font-display: swap;
 }
@@ -24,7 +26,9 @@
     url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Regular.woff2")
       format("woff2"),
     url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Regular.woff")
-      format("woff");
+      format("woff"),
+    url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/vel/Velvelyne-Regular.otf")
+      format("opentype");
   font-style: normal;
   font-weight: normal;
   font-display: swap;
