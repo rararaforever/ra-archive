@@ -226,6 +226,7 @@ a {
 
 html {
   /* font-size: 62.5%; */
+  font-size: 100% !important;
 }
 
 body {
@@ -354,8 +355,8 @@ __ shit
   gap: 1rem;
 }
 
-.archive-welcome h1,
-.archive-howto h1 {
+.archive-welcome #archiveWelcomeTitle,
+.archive-howto #howToTitle {
   font-size: clamp(1.5rem, 4vw, 2.25rem);
   line-height: 1.1;
 }
@@ -395,8 +396,9 @@ __ shit
   gap: 0.5rem;
 }
 
-.archive-howto h2 {
+.archive-howto__section-title {
   font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .archive-welcome__continue {
@@ -1165,6 +1167,7 @@ button:hover {
   max-width: 80%;
   padding: 0 0.5rem;
   background: var(--color--background);
+  text-align: center;
 }
 
 #filterCount {
