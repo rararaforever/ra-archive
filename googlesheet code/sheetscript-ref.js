@@ -117,8 +117,10 @@ function extractBlocks(url, title, thumbCell, slug) {
 
   // Logger.log(`matches ${index}: ${match.type}`);
 
-  handleDataInsertion(match, url, slug, title);
-  handleTypeInsertion(match.type);
+  if (match) {
+    handleDataInsertion(match, url, slug, title);
+    handleTypeInsertion(match.type);
+  }
   handleThumbnailInsertion(match, url, thumbCell, title, slug);
 }
 function handleArena(blockIds, match) {
@@ -275,7 +277,7 @@ function handleDataInsertion(match, url, slug, title) {
 function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
   let thumbSrc = null;
   let row;
-  let thumbId = `thumb_${match.class}_${slug}`;
+  let thumbId = `thumb_${match?.class || "custom"}_${slug}`;
   let thumbTitle = `thumb_${title}`;
   if (thumbCell != null) {
     row = [
@@ -289,15 +291,15 @@ function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
       "",
     ];
   } else {
-    if (match.thumb) {
+    if (match?.thumb) {
       if (match.thumb.link) thumbSrc = match.thumb.link;
       else thumbSrc = match.thumb;
-    } else if (match.type == "video") {
+    } else if (match?.type == "video") {
       if (match.class == "youtube")
         thumbSrc = `https://img.youtube.com/vi/${match.match[1]}/hqdefault.jpg`;
       if (match.class == "vimeo") thumbSrc = getVimeoThumbnail(url);
-    } else if (match.class == "flickr") thumbSrc = flickrthumb;
-    else if (match.class == "reelasian") thumbSrc = RAthumb;
+    } else if (match?.class == "flickr") thumbSrc = flickrthumb;
+    else if (match?.class == "reelasian") thumbSrc = RAthumb;
     row = [
       thumbId,
       thumbTitle,

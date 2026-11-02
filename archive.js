@@ -244,6 +244,7 @@ const archiveLoadingMinimumDuration = 2000;
 const archiveLoadingFadeDuration = 250;
 const archiveRenderMinimumDuration = 500;
 const archiveWelcomeStorageKey = "reelAsianArchiveWelcomeSeen";
+const archiveNavigationStateKey = "reelAsianArchiveNavigationState";
 // Set this to the URL of the video played whenever the randomizer is spun.
 const archiveSpinAnimationSource = "";
 let archiveRenderRequestId = 0;
@@ -321,7 +322,11 @@ async function logSheetData() {
 async function initArchive() {
   await loadDialogTemplates();
   initFilters();
+  const savedScrollPosition = restoreArchiveNavigationState();
   archive.searchInput = document.querySelector("#searchInput");
+  if (archive.searchInput) {
+    archive.searchInput.value = archive.search;
+  }
   archive.projects = prepProjects();
   console.log(data);
   console.log(archive);
@@ -329,12 +334,113 @@ async function initArchive() {
   console.log(columnLabels);
   console.log(lookup);
   setupEvents();
+  window.addEventListener("resize", updateTigerPadding);
   updateViewControls();
   updateFilterVisibility();
   await renderArchive();
   updateTigerPadding();
+  if (savedScrollPosition !== null) {
+    requestAnimationFrame(() => window.scrollTo(0, savedScrollPosition));
+  }
   await hideArchiveLoading();
   showWelcomeDialog();
+}
+
+function restoreArchiveNavigationState() {
+  let savedState;
+  try {
+    const serializedState = window.sessionStorage.getItem(
+      archiveNavigationStateKey,
+    );
+    if (!serializedState) {
+      return null;
+    }
+
+    savedState = JSON.parse(serializedState);
+    window.sessionStorage.removeItem(archiveNavigationStateKey);
+  } catch (error) {
+    console.error("Failed to restore archive navigation state:", error);
+    return null;
+  }
+
+  if (!savedState || typeof savedState !== "object") {
+    return null;
+  }
+
+  archive.search =
+    typeof savedState.search === "string" ? savedState.search : "";
+  archive.filters = createDefaultFilterState();
+  for (const [group, values] of Object.entries(savedState.filters || {})) {
+    if (group in archive.filters && Array.isArray(values)) {
+      archive.filters[group] = values.filter(
+        (value) => typeof value === "string",
+      );
+    }
+  }
+
+  if (Number.isInteger(savedState.currentPage) && savedState.currentPage > 0) {
+    archive.currentPage = savedState.currentPage;
+  }
+  if (["grid", "list", "random"].includes(savedState.viewMode)) {
+    archive.viewMode = savedState.viewMode;
+  }
+  if (Number.isFinite(savedState.perPage) && savedState.perPage > 0) {
+    archive.perPage = savedState.perPage;
+  }
+
+  activeFilters = Object.values(archive.filters).flat();
+  document.querySelectorAll(".filtermenu__item").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      archive.filters[button.dataset.group]?.includes(button.dataset.value) ??
+        false,
+    );
+  });
+
+  const gridSlider = document.querySelector("#gridSlider");
+  const rowSlider = document.querySelector("#rowSlider");
+  if (gridSlider && Number.isFinite(Number(savedState.gridColumns))) {
+    gridSlider.value = String(savedState.gridColumns);
+    const gridValue = document.querySelector("#gridValue");
+    if (gridValue) gridValue.textContent = gridSlider.value;
+  }
+  if (rowSlider && Number.isFinite(Number(savedState.rowSize))) {
+    rowSlider.value = String(savedState.rowSize);
+    const rowValue = document.querySelector("#rowValue");
+    if (rowValue) rowValue.textContent = rowSlider.value;
+  }
+
+  document
+    .querySelectorAll(".view__btn[data-view]")
+    .forEach((button) => {
+      const isActive = button.dataset.view === archive.viewMode;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+
+  return Number.isFinite(savedState.scrollY) ? savedState.scrollY : null;
+}
+
+function saveArchiveNavigationState() {
+  const state = {
+    search: archive.search,
+    filters: archive.filters,
+    currentPage: archive.currentPage,
+    perPage: archive.perPage,
+    viewMode: archive.viewMode,
+    gridColumns: document.querySelector("#gridSlider")?.value,
+    rowSize: document.querySelector("#rowSlider")?.value,
+    scrollY: window.scrollY,
+  };
+
+  try {
+    window.sessionStorage.setItem(
+      archiveNavigationStateKey,
+      JSON.stringify(state),
+    );
+  } catch (error) {
+    console.error("Failed to save archive navigation state:", error);
+  }
 }
 
 async function loadDialogTemplates() {
@@ -736,12 +842,14 @@ function updateFaceted(card) {
 function updateTigerPadding() {
   const tiger = document.querySelector(".tiger");
   const header = document.querySelector(".header");
+  const pagination = document.querySelector(".pagination--container");
 
   if (!tiger || !header) {
     return;
   }
 
   tiger.style.paddingTop = `${header.offsetHeight}px`;
+  tiger.style.paddingBottom = `${(pagination?.offsetHeight || 0) + 20}px`;
 }
 
 /* -------------------------------------------
@@ -851,6 +959,7 @@ function setupEvents() {
         return;
       }
 
+      saveArchiveNavigationState();
       window.location.href = `/archive-page#${slug}`;
     });
   }

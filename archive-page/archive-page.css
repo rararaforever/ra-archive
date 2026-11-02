@@ -20,13 +20,33 @@
   font-weight: 400;
   font-display: swap;
 }
+@font-face {
+  font-family: scrap;
+  src: url("https://cdn.jsdelivr.net/gh/rararaforever/orbit-fonts@main/ScrapBits-Regular.otf")
+    format("opentype");
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
-  --color-darkwine: #4c1311;
+  --color-darkwine: #4c1311 !important;
+  --color-green: #049348 !important;
+  --color-powder: #c2d6ec !important;
+  --color-lime: #c2d986 !important;
+  --color--background: var(--color-powder) !important;
+  --color--button-active: var(--color--background);
+  --color-blue: #2e3791;
   --color-green: #049348;
+  --color-red: #e64035;
   --color-powder: #c2d6ec;
+  --color-pink: #f48f8c;
+  --color-darkwine: #4c1311;
+  --color-darkgreen: #0b542a;
+  --color-darkblue: #282560;
+  --color-gray1: #b5c5cd;
+  --color-darkred: #e51d1c;
+  --color-gray2: #d3dce2;
   --color-lime: #c2d986;
-  --color--background: var(--color-powder);
 }
 
 * {
@@ -36,25 +56,34 @@
 }
 
 body {
-  background: #f5f5f5;
-  color: var(--color-darkwine);
+  background: #f5f5f5 !important;
+  color: var(--color-darkwine) !important;
   font-family: vel, sans-serif;
   line-height: 1.2;
 }
 
 button {
   font: inherit;
+  cursor: pointer;
 }
 
 html {
-  box-shadow: 0 0 10px #28256063;
+  box-shadow: 0 0 10px #28256063 !important;
 }
+
+.header {
+  padding: 1rem 1rem;
+  background: var(--color-powder) !important;
+  box-shadow: 0 0 10px #28256063;
+  position: relative;
+}
+
 .tiger {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
   padding: 1rem;
-  background: var(--color-powder);
+  background: var(--color-powder) !important;
 }
 
 .archive-detail-page {
@@ -73,21 +102,40 @@ html {
   width: 100%;
   max-width: none;
   padding: clamp(1rem, 4vw, 3rem);
-  border: 2px solid var(--color-darkwine);
+  border: 2px solid var(--color-darkwine) !important;
   border-radius: 13px;
-  background: var(--color-lime);
-  box-shadow: 1px 1px 20px var(--color-lime);
+  background: var(--color-lime) !important;
+  box-shadow: 1px 1px 20px var(--color-lime) !important;
   font-size: 1.8rem;
 }
 
 .archive-detail__back {
-  justify-self: start;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--color-darkwine);
-  border-radius: 0.25rem;
-  background: var(--color--background);
-  color: var(--color-darkwine);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem 0.2rem 0.3rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: none;
+  color: var(--color-green) !important;
+  font-size: 1rem;
+  max-height: 35px;
+  font-weight: bold;
+}
+.archive-detail__back span {
+  background: var(--color-darkgreen);
+  /* padding: 0.2rem 0.2rem; */
+  font-size: 140%;
+  border-radius: 6px;
+  height: 30px;
+  width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-lime) !important;
+  padding-bottom: 0.2rem;
 }
 
 .archive-page__header {
@@ -95,6 +143,7 @@ html {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 1rem;
+  margin: 0 auto;
 }
 
 .archive-page__header .header__title {
@@ -104,6 +153,9 @@ html {
   font-size: clamp(1.5rem, 4vw, 2.2rem);
   line-height: 1.1;
   text-align: center;
+  font-family: "scrap";
+  font-size: 2.2rem;
+  justify-self: center;
 }
 
 .archive-detail__header {
@@ -120,11 +172,17 @@ html {
   grid-template-columns: minmax(10rem, 0.3fr) minmax(0, 1fr);
   gap: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-darkwine);
+  border-bottom: 1px solid var(--color-darkwine) !important;
 }
 
-.archive-detail__accessibility h2 {
+.archive-detail__accessibility-title {
   font-size: 1rem;
+  font-weight: 700;
+}
+
+.archive-detail__links-title {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
 }
 
 .archive-detail__info {
@@ -136,11 +194,12 @@ html {
   grid-template-columns: minmax(10rem, 0.3fr) minmax(0, 1fr);
   gap: 1rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid var(--color-darkwine);
+  border-bottom: 1px solid var(--color-darkwine) !important;
 }
 
 .archive-detail__field dt {
   font-weight: 700;
+  text-transform: capitalize;
 }
 
 .archive-detail__field dd {
@@ -187,7 +246,7 @@ html {
   max-width: 100%;
   padding: 0;
   border: 0;
-  background: transparent;
+  background: transparent !important;
   cursor: pointer;
 }
 
@@ -221,7 +280,7 @@ html {
 }
 
 .archive-detail__links {
-  border-top: 1px solid var(--color-darkwine);
+  border-top: 1px solid var(--color-darkwine) !important;
   padding-top: 1rem;
 }
 

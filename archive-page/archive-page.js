@@ -90,40 +90,59 @@ function generatePage() {
 
   const titleField = window.pageMap.find((field) => field.col === "a");
   const accessibilityField = window.pageMap.find((field) => field.col === "f");
+  const siteHeader = document.querySelector(".header");
+  if (!siteHeader) {
+    throw new Error("Archive page requires a .header container.");
+  }
+
+  siteHeader.innerHTML = `
+    <header class="archive-page__header">
+      <button class="archive-detail__back" type="button"><span><</span>Back to archive</button>
+      <div class="header__title">Reel Asian Archive</div>
+    </header>
+  `;
+  siteHeader
+    .querySelector(".archive-detail__back")
+    .addEventListener("click", () => {
+      window.location.href = "/archive";
+    });
+
   const page = createHTML(`
     <div class="archive-detail-page">
-      <header class="archive-page__header">
-        <button class="archive-detail__back" type="button">Back to archive</button>
-        <div class="header__title">Reel Asian Archive</div>
-      </header>
       <article class="archive-detail" data-slug="">
         <header class="archive-detail__header">
-          <h1 class="archive-detail__title"></h1>
+          <div class="archive-detail__title" role="heading" aria-level="1"></div>
         </header>
         <section class="archive-detail__accessibility">
-          <h2></h2>
+          <div
+            class="archive-detail__accessibility-title"
+            role="heading"
+            aria-level="2"
+          ></div>
           <p></p>
         </section>
         <dl class="archive-detail__info"></dl>
         <section class="archive-detail__media"></section>
         <nav class="archive-detail__links" aria-label="Original source links" hidden>
-          <h2>Original links</h2>
+          <div
+            class="archive-detail__links-title"
+            role="heading"
+            aria-level="2"
+          >
+            Original links
+          </div>
           <ul></ul>
         </nav>
       </article>
     </div>
   `);
 
-  page.querySelector(".archive-detail__back").addEventListener("click", () => {
-    window.location.href = "/archive";
-  });
-
   page.querySelector(".archive-detail").dataset.slug = String(row.v || "");
   page.querySelector(".archive-detail__title").textContent =
     row[titleField?.col || "a"] || "Untitled";
 
   if (accessibilityField && row[accessibilityField.col]) {
-    page.querySelector(".archive-detail__accessibility h2").textContent =
+    page.querySelector(".archive-detail__accessibility-title").textContent =
       accessibilityField.name;
     page.querySelector(".archive-detail__accessibility p").textContent =
       row[accessibilityField.col];
