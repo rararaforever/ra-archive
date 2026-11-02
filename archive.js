@@ -4,6 +4,10 @@
 __
 //,, SHARED DATA AND LOOKUPS
 //,,-------------------------------------------*/
+const archiveScriptUrl =
+  document.currentScript?.src ||
+  document.querySelector('script[src*="archive.js"]')?.src ||
+  window.location.href;
 window.noImageThumbnail =
   "https://s3.amazonaws.com/arena_images-temp/uploads%2Fdb4c39ea-2fd3-42af-83bb-6ae6b820133a%2Fthumb-none.png" ||
   {};
@@ -337,13 +341,17 @@ async function loadDialogTemplates() {
   const templates = [
     {
       selector: "#archiveWelcome",
-      url: "./archive-dialogs/archive-welcome.html",
+      path: "archive-dialogs/archive-welcome.html",
     },
-    { selector: "#howToDialog", url: "./archive-dialogs/archive-howto.html" },
+    {
+      selector: "#howToDialog",
+      path: "archive-dialogs/archive-howto.html",
+    },
   ];
 
   await Promise.all(
-    templates.map(async ({ selector, url }) => {
+    templates.map(async ({ selector, path }) => {
+      const url = new URL(path, archiveScriptUrl);
       try {
         const dialog = document.querySelector(selector);
         const response = await fetch(url);
