@@ -91,24 +91,34 @@ function generatePage() {
   const titleField = window.pageMap.find((field) => field.col === "a");
   const accessibilityField = window.pageMap.find((field) => field.col === "f");
   const page = createHTML(`
-    <article class="archive-detail archivecard__container" data-slug="">
-      <header class="archive-detail__header">
-        <h1 class="archive-detail__title"></h1>
+    <div class="archive-detail-page">
+      <header class="archive-page__header">
+        <button class="archive-detail__back" type="button">Back to archive</button>
+        <div class="header__title">Reel Asian Archive</div>
       </header>
-      <section class="archive-detail__accessibility">
-        <h2></h2>
-        <p></p>
-      </section>
-      <dl class="archive-detail__info"></dl>
-      <section class="archive-detail__media"></section>
-      <nav class="archive-detail__links" aria-label="Original source links" hidden>
-        <h2>Original links</h2>
-        <ul></ul>
-      </nav>
-    </article>
+      <article class="archive-detail" data-slug="">
+        <header class="archive-detail__header">
+          <h1 class="archive-detail__title"></h1>
+        </header>
+        <section class="archive-detail__accessibility">
+          <h2></h2>
+          <p></p>
+        </section>
+        <dl class="archive-detail__info"></dl>
+        <section class="archive-detail__media"></section>
+        <nav class="archive-detail__links" aria-label="Original source links" hidden>
+          <h2>Original links</h2>
+          <ul></ul>
+        </nav>
+      </article>
+    </div>
   `);
 
-  page.dataset.slug = String(row.v || "");
+  page.querySelector(".archive-detail__back").addEventListener("click", () => {
+    window.location.href = "/archive";
+  });
+
+  page.querySelector(".archive-detail").dataset.slug = String(row.v || "");
   page.querySelector(".archive-detail__title").textContent =
     row[titleField?.col || "a"] || "Untitled";
 

@@ -753,7 +753,7 @@ button:hover {
   position: fixed;
   top: 0;
   z-index: 30;
-  box-shadow: 0 0 10px var(--color-darkblue);
+  box-shadow: 0 0 10px #28256063;
 }
 
 .header--container {
