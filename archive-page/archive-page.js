@@ -11,11 +11,10 @@ window.pageMap = window.pageMap || [
   { col: "l", name: "Language of Video" },
   { col: "m", name: "File Type" },
   { col: "n", name: "Festival Year" },
-  { col: "p", name: "tags" },
-  { col: "o", name: "hidden tags" },
+  { col: "p", name: "filter tags" },
+  { col: "o", name: "searchable tags" },
   { col: "q", name: "date submitted" },
-  { col: "r", name: "Copy Right Credit" },
-  { col: "t", name: "Storage Location" },
+  { col: "r", name: "Copyright Credit" },
 ];
 
 window.slug = window.location.hash.substring(1);
@@ -166,7 +165,10 @@ function generatePage() {
         </div>
       `);
       info.querySelector("dt").textContent = field.name;
-      info.querySelector("dd").textContent = String(row[field.col]);
+      info.querySelector("dd").textContent =
+        field.col === "q"
+          ? formatSubmittedDate(row[field.col])
+          : String(row[field.col]);
       infoList.append(info);
     });
 
@@ -502,6 +504,16 @@ function safeHttpUrl(value) {
 
 function hasValue(value) {
   return value != null && String(value).trim() !== "";
+}
+
+function formatSubmittedDate(value) {
+  const dateMatch = String(value).match(
+    /^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/,
+  );
+  if (!dateMatch) return String(value);
+
+  const [, year, month, day] = dateMatch;
+  return `${day}/${month}/${year}`;
 }
 
 function showPageError(message) {
