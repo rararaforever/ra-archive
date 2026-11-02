@@ -11,6 +11,7 @@ window.data = window.data || [];
 window.assets = window.assets || [];
 window.lookup = window.lookup || {};
 window.lookupSlug = window.lookupSlug || {};
+window.columnLabels = window.columnLabels || [];
 
 /* -------------------------------------------
 __
@@ -79,126 +80,8 @@ function initializePageMarkup() {
       class="archive-welcome"
       id="archiveWelcome"
       aria-labelledby="archiveWelcomeTitle"
-    >
-      <div class="archive-welcome__content">
-        <h1 id="archiveWelcomeTitle">
-          Welcome to the Reel Asian Digital Community Archive!
-        </h1>
-        <p>
-          This is a community archive, please navigate with sensitivity and
-          mindfulness. Users must adhere to the unique copyright and sharing
-          permissions on each of the entries. Sharing of material against the
-          wishes of the copyright holder’s discretion is strictly prohibited.
-        </p>
-        <p>
-          If there is an entry that involves you or your likeness in the archive
-          that you want removed or edited, please reach out to
-          <a href="mailto:specialprojects@reelasian.com"
-            >specialprojects@reelasian.com</a
-          >
-          to have it addressed.
-        </p>
-        <p>
-          This is not a complete directory of all films and events from Reel
-          Asian, but rather pieces of it. We focused on things submitted from
-          community members, and material available online and in our own
-          archive to release.
-        </p>
-        <p>
-          If you just want to explore: Browse using the filtering options, and
-          see what you find!
-        </p>
-        <p>Or, type in a key word, place or name in the search bar.</p>
-        <p>Here you will find:</p>
-        <ul>
-          <li>
-            Memorabilia and keepsakes of community members at Reel Asian over
-            the years
-          </li>
-          <li>
-            Several commissioned and programmed films available online,
-            searchable via tags, names and key words
-          </li>
-          <li>Archived panels and talks hosted through our industry series</li>
-          <li>
-            Archived Internal, Operational and Marketing Reel Asian documents
-            and items
-          </li>
-          <li>
-            Critical writing on programmed films/panels: Youth Critics
-            Initiative Pieces (TACLA)
-          </li>
-          <li>Wee Asian arts activities over the last 5 years</li>
-          <li>And more!</li>
-        </ul>
-        <p>Wander around, and have fun!</p>
-        <form method="dialog">
-          <button class="archive-welcome__continue" type="submit">
-            Continue to archive →
-          </button>
-        </form>
-      </div>
-    </dialog>
-    <dialog class="archive-howto" id="howToDialog" aria-labelledby="howToTitle">
-      <button
-        class="archive-howto__close"
-        id="howToClose"
-        type="button"
-        aria-label="Close How To"
-      >
-        ×
-      </button>
-      <div class="archive-howto__content">
-        <h1 id="howToTitle">How to use the archive</h1>
-        <section>
-          <h2>THE SEARCH BAR</h2>
-          <p>
-            The search bar searches the title of an item as well as its
-            description. This is a good place to look up names of people,
-            programs, places, and countries. It searches live as you type, so
-            sometimes there may not be anything tagged exactly for what you are
-            looking for (ie. “Thailand”) but there are entries for something
-            similar (ie. “Thai”). Consider different terms and keywords to use
-            to find what you are looking for.
-          </p>
-        </section>
-        <section>
-          <h2>FILTERS</h2>
-          <p>
-            These filters are a great place to start exploring. These filters
-            are divided into 6 sections:
-          </p>
-          <ul>
-            <li>
-              Medium (What type of format is the entry about? Short film,
-              feature film, Event)
-            </li>
-            <li>
-              Programme (Explore Reel Asian’s different programming subsections
-              like: Community Archive Submission, RA:X, Reel Ideas)
-            </li>
-            <li>
-              Tags (There are over 100 tags in this database, they range from
-              topic, genre, description of event and more)
-            </li>
-            <li>Year (Filter by a specific festival year)</li>
-            <li>Language (Language of video or text based piece)</li>
-            <li>Country (Country of film production)</li>
-          </ul>
-        </section>
-        <section>
-          <h2>HOT KEYS</h2>
-          <p>
-            <kbd>ENTER</kbd> will automatically search what you have typed in
-            the search bar
-          </p>
-          <p>
-            <kbd>ESC</kbd> will automatically minimize the full screen search
-            page
-          </p>
-        </section>
-      </div>
-    </dialog>
+    ></dialog>
+    <dialog class="archive-howto" id="howToDialog" aria-labelledby="howToTitle"></dialog>
     <div class="pagination--container">
       <div class="pagination"></div>
       <div class="viewmenu--container">
@@ -347,6 +230,7 @@ __
 //,, ARCHIVE SETTINGS/
 //,,-------------------------------------------*/
 let idRow = "u";
+let thumbRow = "x";
 let slugRow = "v";
 let activeFilterCountToggle = 0;
 let expandSign = "⤡";
@@ -431,10 +315,15 @@ async function logSheetData() {
 }
 
 async function initArchive() {
+  await loadDialogTemplates();
   initFilters();
   archive.searchInput = document.querySelector("#searchInput");
   archive.projects = prepProjects();
+  console.log(data);
   console.log(archive);
+
+  console.log(columnLabels);
+  console.log(lookup);
   setupEvents();
   updateViewControls();
   updateFilterVisibility();
@@ -442,6 +331,34 @@ async function initArchive() {
   updateTigerPadding();
   await hideArchiveLoading();
   showWelcomeDialog();
+}
+
+async function loadDialogTemplates() {
+  const templates = [
+    {
+      selector: "#archiveWelcome",
+      url: "./archive-dialogs/archive-welcome.html",
+    },
+    { selector: "#howToDialog", url: "./archive-dialogs/archive-howto.html" },
+  ];
+
+  await Promise.all(
+    templates.map(async ({ selector, url }) => {
+      try {
+        const dialog = document.querySelector(selector);
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const template = document.createElement("template");
+        template.innerHTML = await response.text();
+        dialog.replaceChildren(template.content);
+      } catch (error) {
+        console.error(`Failed to load dialog template ${url}:`, error);
+      }
+    }),
+  );
 }
 
 async function hideArchiveLoading() {
@@ -552,7 +469,7 @@ function prepProjects() {
         : "null";
     });
 
-    project.thumbnail = getThumbnail(row).src;
+    project.thumbnail = getThumbnail(row);
     project.year = row.n;
     project.desc = row.e;
     project.slug = row.v;
@@ -926,7 +843,7 @@ function setupEvents() {
         return;
       }
 
-      window.location.href = `/orbit-archivepage#${slug}`;
+      window.location.href = `/archive-page#${slug}`;
     });
   }
 
@@ -1272,8 +1189,8 @@ function generateFilters() {
           <p>Try searching up a name, genre or keyword</br>Here are some examples to start:</p>
 
           <ul>
-            <li>Comedy</li>
-            <li>Spotlight Artist</li>
+            <li>Unsung Voices</li>
+            <li>Community Archive</li>
             <li>Operational Material</li>
             <li>Review</li>
           </ul>
@@ -1492,8 +1409,8 @@ function createCard(project, view) {
 
       <div class="infocard__des">${project.desc ? project.desc : ""}</div>
       <div class="thumbnail__container">
-        ${project.thumbnail
-          ? `<img class="thumbnail__img" src="${project.thumbnail}" alt="" decoding="async">`
+        ${project.thumbnail.small
+          ? `<img class="thumbnail__img" src="${project.thumbnail.small}" alt="" decoding="async">`
           : ""}
       </div>
     `;
@@ -1512,8 +1429,8 @@ function createCard(project, view) {
     }
     card.innerHTML = /* HTML */ `
       <div class="thumbnail__container">
-        ${project.thumbnail
-          ? `<img class="thumbnail__img" src="${project.thumbnail}" alt="" decoding="async">`
+        ${project.thumbnail.small
+          ? `<img class="thumbnail__img" src="${project.thumbnail.small}" alt="" decoding="async">`
           : ""}
       </div>
       <div class="archivecard__list-main">
@@ -1643,6 +1560,14 @@ async function fetchSheet(url) {
     text.lastIndexOf("}") + 1,
   );
   const json = JSON.parse(jsonString);
+  if (url === URLD) {
+    window.columnLabels = json.table.cols
+      .filter((e) => e.label != "")
+      .map((column, index) => ({
+        charCode: String.fromCharCode(97 + index),
+        label: column.label,
+      }));
+  }
   return json.table.rows.map((row) => {
     const obj = {};
     for (let i = 0; i < row.c.length; i++) {
@@ -1671,21 +1596,26 @@ function createHTMLfragment(html) {
   return template.content;
 }
 function getThumbnail(row) {
-  if (row[idRow] == null)
+  //add the thumbnail thing
+  if (row[thumbRow] == null)
     return {
       src: noImageThumbnail,
+      small: noImageThumbnail,
+      medium: noImageThumbnail,
       alt_text: null,
     };
-  let t = parseToObjects(row[idRow]);
+  let t = parseToObjects(row[thumbRow]);
   let link = lookup[t[0].value];
   if (link == null) {
     console.log("No asset found for id: " + t[0].value);
     return {
       src: noImageThumbnail,
+      small: noImageThumbnail,
+      medium: noImageThumbnail,
       alt_text: null,
     };
   } else {
-    return { src: link.d ? link.d : null, alt_text: link.f };
+    return { src: link.d, small: link.e, medium: link.f, alt_text: link.f };
   }
 }
 function parseToObjects(text) {
