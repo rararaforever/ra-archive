@@ -118,7 +118,7 @@ function generatePage() {
             role="heading"
             aria-level="2"
           ></div>
-          <p></p>
+          <p class="archive-detail__accessibility-content"></p>
         </section>
         <dl class="archive-detail__info"></dl>
         <section class="archive-detail__media"></section>
@@ -350,39 +350,42 @@ function createCarousel(assets, mediaType, label) {
   const next = carousel.querySelector(".archive-detail__next");
   const count = carousel.querySelector(".archive-detail__carousel-count");
   let currentIndex = 0;
+  let galleryImage;
+  let galleryImageButton;
+  let galleryDescription;
+
+  if (mediaType === "image") {
+    const figure = createHTML(`
+      <figure class="archive-detail__gallery-figure">
+        <button class="archive-detail__gallery-image-button" type="button"></button>
+        <figcaption class="archive-detail__image-description"></figcaption>
+      </figure>
+    `);
+    galleryImageButton = figure.querySelector("button");
+    galleryImage = createHTML(`
+      <img class="archive-detail__gallery-image" alt="" loading="eager">
+    `);
+    galleryDescription = figure.querySelector("figcaption");
+    galleryImageButton.append(galleryImage);
+    galleryImageButton.addEventListener("click", advance);
+    content.append(figure);
+  }
 
   const showAsset = () => {
     const asset = availableAssets[currentIndex];
-    content.replaceChildren();
 
     if (mediaType === "image") {
-      const image = createHTML(`
-        <figure class="archive-detail__gallery-figure">
-          <button class="archive-detail__gallery-image-button" type="button"></button>
-          <figcaption class="archive-detail__image-description"></figcaption>
-        </figure>
-      `);
-      const imageButton = image.querySelector("button");
-      const imageElement = createHTML(`
-        <img class="archive-detail__gallery-image" alt="" loading="lazy">
-      `);
-      imageElement.src = getAssetSource(asset);
-      imageButton.setAttribute(
+      galleryImage.src = getAssetSource(asset);
+      galleryImage.alt =
+        asset.h || asset.b || `Gallery image ${currentIndex + 1}`;
+      galleryImageButton.setAttribute(
         "aria-label",
         `Show next gallery image (${currentIndex + 1} of ${availableAssets.length})`,
       );
-      imageButton.append(imageElement);
-      imageButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        advance();
-      });
-      imageElement.alt =
-        asset.h || asset.b || `Gallery image ${currentIndex + 1}`;
-      const description = image.querySelector("figcaption");
-      description.textContent = asset.g || "";
-      if (!asset.g) description.remove();
-      content.append(image);
+      galleryDescription.textContent = asset.g || "";
+      galleryDescription.hidden = !asset.g;
     } else {
+      content.replaceChildren();
       const audio = createHTML(`
         <audio class="archive-detail__audio-player" controls preload="metadata"></audio>
       `);
@@ -396,7 +399,6 @@ function createCarousel(assets, mediaType, label) {
     previous.hidden = availableAssets.length < 2;
     next.hidden = availableAssets.length < 2;
     previous.disabled = currentIndex === 0;
-    next.disabled = currentIndex === availableAssets.length - 1;
   };
 
   previous.addEventListener("click", () => {
@@ -410,10 +412,8 @@ function createCarousel(assets, mediaType, label) {
   });
 
   function advance() {
-    if (currentIndex < availableAssets.length - 1) {
-      currentIndex += 1;
-      showAsset();
-    }
+    currentIndex = (currentIndex + 1) % availableAssets.length;
+    showAsset();
   }
 
   showAsset();

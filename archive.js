@@ -38,7 +38,7 @@ __//
 function initializePageMarkup() {
   const header = document.querySelector(".header");
   const tiger = document.querySelector(".tiger");
-
+  const pp = document.querySelector(".page");
   if (!header || !tiger) {
     throw new Error("Archive page requires .header and .tiger containers.");
   }
@@ -59,7 +59,7 @@ function initializePageMarkup() {
         loop
         playsinline
         aria-hidden="true"
-        src="https://attachments.are.na/51952544/efbd7a34f9588595b31689a136d83986.mp4?1793105069"
+        src="https://s3.amazonaws.com/arena_images-temp/uploads%2Fd91cbed1-97f0-453e-80ac-e01fc97ce0a2%2Floadings+%281%29.mp4"
       ></video>
       <span class="archive-loading__message">Loading archive...</span>
     </div>
@@ -149,6 +149,13 @@ function initializePageMarkup() {
     </div>
   `;
 
+  const paginationContainer = shell.content.querySelector(
+    ".pagination--container",
+  );
+  if (pp) {
+    pp.append(paginationContainer);
+  }
+
   header.innerHTML = `
     <div class="header--container">
       <div class="header__bar--container">
@@ -159,9 +166,10 @@ function initializePageMarkup() {
       </div>
       <div class="header__links--container">
         <a href="" class="header__link" id="howToLink">How to</a>
-        <a href="" class="header__link" id="aboutLink">About</a>
+        <a href="/communityarchive" class="header__link" id="aboutLink">About</a>
       </div>
     </div>
+    <div class="header__mobile-search"></div>
     <div class="filter--parent">
       <div class="filter--container" id="filter__container"></div>
     </div>
@@ -240,7 +248,7 @@ let activeFilterCountToggle = 0;
 let expandSign = "⤡";
 let closeSign = "x";
 const archiveLoadingStartedAt = performance.now();
-const archiveLoadingMinimumDuration = 2000;
+const archiveLoadingMinimumDuration = 3000;
 const archiveLoadingFadeDuration = 250;
 const archiveRenderMinimumDuration = 500;
 const archiveWelcomeStorageKey = "reelAsianArchiveWelcomeSeen";
@@ -328,6 +336,7 @@ async function initArchive() {
     archive.searchInput.value = archive.search;
   }
   archive.projects = prepProjects();
+  updateResponsiveArchiveLayout(false);
   console.log(data);
   console.log(archive);
 
@@ -335,6 +344,7 @@ async function initArchive() {
   console.log(lookup);
   setupEvents();
   window.addEventListener("resize", updateTigerPadding);
+  window.addEventListener("resize", updateResponsiveArchiveLayout);
   updateViewControls();
   updateFilterVisibility();
   await renderArchive();
@@ -410,13 +420,11 @@ function restoreArchiveNavigationState() {
     if (rowValue) rowValue.textContent = rowSlider.value;
   }
 
-  document
-    .querySelectorAll(".view__btn[data-view]")
-    .forEach((button) => {
-      const isActive = button.dataset.view === archive.viewMode;
-      button.classList.toggle("active", isActive);
-      button.setAttribute("aria-pressed", String(isActive));
-    });
+  document.querySelectorAll(".view__btn[data-view]").forEach((button) => {
+    const isActive = button.dataset.view === archive.viewMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 
   return Number.isFinite(savedState.scrollY) ? savedState.scrollY : null;
 }
@@ -693,6 +701,51 @@ function updateFilterVisibility() {
   filterParent?.classList.toggle("is-view-hidden", shouldHide);
 }
 
+function updateResponsiveArchiveLayout(shouldRender = true) {
+  const isCompact = window.matchMedia("(max-width: 900px)").matches;
+  const isSmall = window.matchMedia("(max-width: 500px)").matches;
+  const search = document.querySelector(".filter__search");
+  const searchDestination = document.querySelector(
+    isCompact ? ".header__mobile-search" : ".filter__grid",
+  );
+
+  if (search && searchDestination && search.parentElement !== searchDestination) {
+    searchDestination.prepend(search);
+  }
+
+  const previousViewMode = archive.viewMode;
+  if (isSmall) {
+    archive.viewMode = "list";
+  } else if (isCompact && archive.viewMode === "random") {
+    archive.viewMode = "grid";
+  }
+
+  if (isCompact && archive.container) {
+    archive.container.style.setProperty("--grid-columns", "2");
+  } else if (archive.container) {
+    const gridSlider = document.querySelector("#gridSlider");
+    if (gridSlider) {
+      archive.container.style.setProperty("--grid-columns", gridSlider.value);
+    }
+  }
+
+  document
+    .querySelectorAll(".view__btn[data-view]")
+    .forEach((button) => {
+      const isActive = button.dataset.view === archive.viewMode;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+
+  updateViewControls();
+  updateFilterVisibility();
+  updateTigerPadding();
+
+  if (shouldRender && previousViewMode !== archive.viewMode) {
+    requestArchiveRender();
+  }
+}
+
 function setupViewSliders() {
   const gridSlider = document.querySelector("#gridSlider");
   const gridValue = document.querySelector("#gridValue");
@@ -920,6 +973,7 @@ function setupEvents() {
   const howToLink = document.querySelector("#howToLink");
   const howToDialog = document.querySelector("#howToDialog");
   const howToClose = document.querySelector("#howToClose");
+  const aboutLink = document.querySelector("#aboutLink");
 
   howToLink?.addEventListener("click", (event) => {
     event.preventDefault();
@@ -934,6 +988,11 @@ function setupEvents() {
     if (event.target === howToDialog) {
       howToDialog.close();
     }
+  });
+
+  aboutLink?.addEventListener("click", (event) => {
+    event.preventDefault();
+    window.location.href = "/communityarchive";
   });
 
   if (archive.container) {
@@ -1178,9 +1237,11 @@ function setupEvents() {
       const action = actionButton.dataset.pageAction;
 
       if (action === "previous") {
-        archive.currentPage -= 1;
+        archive.currentPage =
+          Number(actionButton.dataset.page) || archive.currentPage - 1;
       } else if (action === "next") {
-        archive.currentPage += 1;
+        archive.currentPage =
+          Number(actionButton.dataset.page) || archive.currentPage + 1;
       }
 
       requestArchiveRender();
@@ -1599,11 +1660,53 @@ function renderPagination(totalPages) {
   previous.type = "button";
   previous.className = "pagination__previous";
   previous.dataset.pageAction = "previous";
-  previous.textContent = "Previous Page";
+  previous.innerHTML =
+    '<span class="pagination__full-label">Previous Page</span><span class="pagination__short-label">Previous</span>';
   previous.disabled = archive.currentPage === 1;
   fragment.append(previous);
 
-  for (let page = 1; page <= totalPages; page += 1) {
+  const visiblePages = new Set([1, totalPages]);
+  for (
+    let page = Math.max(1, archive.currentPage - 2);
+    page <= Math.min(totalPages, archive.currentPage + 2);
+    page += 1
+  ) {
+    visiblePages.add(page);
+  }
+
+  const pages = [...visiblePages].sort((a, b) => a - b);
+  const status = document.createElement("span");
+  status.className = "pagination__status";
+  status.setAttribute("aria-live", "polite");
+  status.textContent = `${archive.currentPage} / ${totalPages}`;
+  fragment.append(status);
+
+  let previousPage = 0;
+  for (const page of pages) {
+    const gap = page - previousPage;
+    if (gap === 2) {
+      appendPageButton(fragment, previousPage + 1);
+    } else if (gap > 2) {
+      const ellipsis = document.createElement("button");
+      ellipsis.type = "button";
+      ellipsis.className = "pagination__ellipsis";
+      ellipsis.dataset.page =
+        page < archive.currentPage
+          ? Math.max(previousPage + 1, page - 5)
+          : Math.min(page - 1, previousPage + 5);
+      ellipsis.setAttribute(
+        "aria-label",
+        `Jump to page ${ellipsis.dataset.page}`,
+      );
+      ellipsis.textContent = "…";
+      fragment.append(ellipsis);
+    }
+
+    appendPageButton(fragment, page);
+    previousPage = page;
+  }
+
+  function appendPageButton(container, page) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "pagination__page";
@@ -1615,14 +1718,15 @@ function renderPagination(totalPages) {
       button.setAttribute("aria-current", "page");
     }
 
-    fragment.append(button);
+    container.append(button);
   }
 
   const next = document.createElement("button");
   next.type = "button";
   next.className = "pagination__next";
   next.dataset.pageAction = "next";
-  next.textContent = "Next Page";
+  next.innerHTML =
+    '<span class="pagination__full-label">Next Page</span><span class="pagination__short-label">Next</span>';
   next.disabled = archive.currentPage === totalPages;
   fragment.append(next);
 
