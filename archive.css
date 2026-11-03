@@ -211,6 +211,9 @@ __ override cargo bs
 [data-predefined-style="true"] bodycopy {
   font-family: "vel" !important;
 }
+[data-predefined-style="true"] [local-style="38675685"] bodycopy {
+  font-size: 100%;
+}
 a {
   border-bottom: none !important;
   text-decoration: none !important;
