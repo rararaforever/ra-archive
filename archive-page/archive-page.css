@@ -205,7 +205,7 @@ html {
 }
 
 .archive-detail__accessibility-title {
-  font-size: 1rem;
+  font-size: 1.3rem;
   font-weight: 700;
 }
 
@@ -216,7 +216,7 @@ html {
 
 .archive-detail__info {
   display: grid;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
 }
 
 .archive-detail__field {
@@ -224,7 +224,7 @@ html {
   grid-template-columns: minmax(10rem, 0.3fr) minmax(0, 1fr);
   gap: 1rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid var(--color-darkwine) !important;
+  /* border-bottom: 1px solid var(--color-darkwine) !important; */
 }
 
 .archive-detail__field dt {

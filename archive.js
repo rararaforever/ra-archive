@@ -38,7 +38,7 @@ __//
 function initializePageMarkup() {
   const header = document.querySelector(".header");
   const tiger = document.querySelector(".tiger");
-  const pp = document.querySelector(".page");
+  const pp = document.querySelector(".pagepage");
   if (!header || !tiger) {
     throw new Error("Archive page requires .header and .tiger containers.");
   }
@@ -248,7 +248,7 @@ let activeFilterCountToggle = 0;
 let expandSign = "⤡";
 let closeSign = "x";
 const archiveLoadingStartedAt = performance.now();
-const archiveLoadingMinimumDuration = 3000;
+const archiveLoadingMinimumDuration = 3100;
 const archiveLoadingFadeDuration = 250;
 const archiveRenderMinimumDuration = 500;
 const archiveWelcomeStorageKey = "reelAsianArchiveWelcomeSeen";
@@ -345,6 +345,9 @@ async function initArchive() {
   setupEvents();
   window.addEventListener("resize", updateTigerPadding);
   window.addEventListener("resize", updateResponsiveArchiveLayout);
+  window.matchMedia("(max-width: 999px)").addEventListener("change", () => {
+    renderPagination(Number(archive.pagination?.dataset.totalPages) || 0);
+  });
   updateViewControls();
   updateFilterVisibility();
   await renderArchive();
@@ -709,7 +712,11 @@ function updateResponsiveArchiveLayout(shouldRender = true) {
     isCompact ? ".header__mobile-search" : ".filter__grid",
   );
 
-  if (search && searchDestination && search.parentElement !== searchDestination) {
+  if (
+    search &&
+    searchDestination &&
+    search.parentElement !== searchDestination
+  ) {
     searchDestination.prepend(search);
   }
 
@@ -729,13 +736,11 @@ function updateResponsiveArchiveLayout(shouldRender = true) {
     }
   }
 
-  document
-    .querySelectorAll(".view__btn[data-view]")
-    .forEach((button) => {
-      const isActive = button.dataset.view === archive.viewMode;
-      button.classList.toggle("active", isActive);
-      button.setAttribute("aria-pressed", String(isActive));
-    });
+  document.querySelectorAll(".view__btn[data-view]").forEach((button) => {
+    const isActive = button.dataset.view === archive.viewMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 
   updateViewControls();
   updateFilterVisibility();
@@ -1648,6 +1653,7 @@ function renderPagination(totalPages) {
     return;
   }
 
+  archive.pagination.dataset.totalPages = totalPages;
   archive.pagination.replaceChildren();
 
   if (totalPages <= 1) {
@@ -1665,13 +1671,22 @@ function renderPagination(totalPages) {
   previous.disabled = archive.currentPage === 1;
   fragment.append(previous);
 
-  const visiblePages = new Set([1, totalPages]);
-  for (
-    let page = Math.max(1, archive.currentPage - 2);
-    page <= Math.min(totalPages, archive.currentPage + 2);
-    page += 1
-  ) {
-    visiblePages.add(page);
+  const useEllipses = window.matchMedia("(max-width: 999px)").matches;
+  const visiblePages = new Set();
+  if (useEllipses) {
+    visiblePages.add(1);
+    visiblePages.add(totalPages);
+    for (
+      let page = Math.max(1, archive.currentPage - 2);
+      page <= Math.min(totalPages, archive.currentPage + 2);
+      page += 1
+    ) {
+      visiblePages.add(page);
+    }
+  } else {
+    for (let page = 1; page <= totalPages; page += 1) {
+      visiblePages.add(page);
+    }
   }
 
   const pages = [...visiblePages].sort((a, b) => a - b);
@@ -1684,9 +1699,9 @@ function renderPagination(totalPages) {
   let previousPage = 0;
   for (const page of pages) {
     const gap = page - previousPage;
-    if (gap === 2) {
+    if (useEllipses && gap === 2) {
       appendPageButton(fragment, previousPage + 1);
-    } else if (gap > 2) {
+    } else if (useEllipses && gap > 2) {
       const ellipsis = document.createElement("button");
       ellipsis.type = "button";
       ellipsis.className = "pagination__ellipsis";
