@@ -212,7 +212,7 @@ __ override cargo bs
   font-family: "vel" !important;
 }
 [data-predefined-style="true"] [local-style="38675685"] bodycopy {
-  font-size: 100%;
+  font-size: 100% !important;
 }
 a {
   border-bottom: none !important;
