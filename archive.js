@@ -299,6 +299,46 @@ function resetFacetedFilters() {
 __
 //,, DATA LOADING AND INITIALIZATION
 //,,-------------------------------------------*/
+const archiveDataCacheKey = "reelAsianArchiveData-v1";
+
+function restoreArchiveDataCache() {
+  try {
+    const serializedData = window.sessionStorage.getItem(archiveDataCacheKey);
+    if (!serializedData) return false;
+
+    const cachedData = JSON.parse(serializedData);
+    if (!Array.isArray(cachedData.data) || !Array.isArray(cachedData.assets)) {
+      return false;
+    }
+
+    data = cachedData.data;
+    assets = cachedData.assets;
+    lookup = createLookup(assets);
+    lookupSlug = createSlugLookup(data);
+    return true;
+  } catch (error) {
+    console.warn("Unable to restore cached archive data:", error);
+    return false;
+  }
+}
+
+function saveArchiveDataCache() {
+  try {
+    window.sessionStorage.setItem(
+      archiveDataCacheKey,
+      JSON.stringify({ data, assets }),
+    );
+  } catch (error) {
+    console.warn("Unable to cache archive data:", error);
+  }
+}
+
+const archiveDataWasCached = data.length > 0 || restoreArchiveDataCache();
+if (archiveDataWasCached && archive.loading) {
+  archive.loading.hidden = true;
+  archive.loading.setAttribute("aria-busy", "false");
+}
+
 if (data.length) {
   initArchive().catch((error) => {
     console.error("❌ Failed to render archive:", error);
@@ -319,6 +359,7 @@ async function logSheetData() {
     assets = sheetAssets;
     lookup = createLookup(assets);
     lookupSlug = createSlugLookup(data);
+    saveArchiveDataCache();
 
     await initArchive();
   } catch (error) {
@@ -488,6 +529,12 @@ async function loadDialogTemplates() {
 
 async function hideArchiveLoading() {
   if (!archive.loading) {
+    return;
+  }
+
+  if (archiveDataWasCached) {
+    archive.loading.hidden = true;
+    archive.loading.setAttribute("aria-busy", "false");
     return;
   }
 
@@ -1573,10 +1620,27 @@ function createCard(project, view) {
   card.className = `archivecard__container archivecard--${view}`;
   card.dataset.slug = project.slug;
   card.dataset.title = project.title;
-
+  let mediums = project.filters.medium;
+  if (mediums == "null") mediums = null;
+  if (mediums) {
+    mediums = mediums.split(",").map((value) => value.trim());
+    mediums = mediums
+      .map(
+        (value) => `
+          <div class="infocard__medium">${value}</div>        
+        `,
+      )
+      .join("");
+  }
   if (view == "grid" || view == "random") {
     card.innerHTML = /* HTML */ `
       <div class="infocard__title">${project.title}</div>
+      <div
+        class="archivecard__list-medium"
+        style="display: ${mediums ? "flex" : "none"}"
+      >
+        ${mediums ? mediums : ""}
+      </div>
       <div class="infocard">
         <div class="infocard__tags">
           <div class="infocard__tags--header">festival year</div>
@@ -1598,18 +1662,6 @@ function createCard(project, view) {
       </div>
     `;
   } else if (view == "list") {
-    let mediums = project.filters.medium;
-    if (mediums == "null") mediums = null;
-    if (mediums) {
-      mediums = mediums.split(",").map((value) => value.trim());
-      mediums = mediums
-        .map(
-          (value) => `
-          <div class="infocard__medium">${value}</div>        
-        `,
-        )
-        .join("");
-    }
     card.innerHTML = /* HTML */ `
       <div class="thumbnail__container">
         ${project.thumbnail.small

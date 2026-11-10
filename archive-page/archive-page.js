@@ -48,7 +48,7 @@ async function fetchSheet(url) {
     Object.fromEntries(
       row.c.map((cell, index) => [
         String.fromCharCode(97 + index),
-        cell ? cell.v : null,
+        index === 6 && cell?.f ? cell.f : cell ? cell.v : null,
       ]),
     ),
   );
@@ -165,10 +165,18 @@ function generatePage() {
         </div>
       `);
       info.querySelector("dt").textContent = field.name;
-      info.querySelector("dd").textContent =
-        field.col === "q"
-          ? formatSubmittedDate(row[field.col])
-          : String(row[field.col]);
+      const value = row[field.col];
+      const description = info.querySelector("dd");
+      if (field.col === "e") {
+        appendTextWithLinks(description, value);
+      } else {
+        description.textContent =
+          field.col === "q"
+            ? formatSubmittedDate(value)
+            : field.col === "g"
+              ? formatCreationDate(value)
+              : String(value);
+      }
       infoList.append(info);
     });
 
@@ -247,7 +255,7 @@ function generatePage() {
           image.alt = asset.f || asset.b || `Preview for Link ${index + 1}`;
           preview.querySelector(
             ".archive-detail__image-description",
-          ).textContent = asset.g || "";
+          ).textContent = decodeHtmlEntities(asset.g || "");
           if (!asset.g) {
             preview
               .querySelector(".archive-detail__image-description")
@@ -353,21 +361,69 @@ function createCarousel(assets, mediaType, label) {
   let galleryImage;
   let galleryImageButton;
   let galleryDescription;
+  let lightbox;
+  let lightboxImage;
 
   if (mediaType === "image") {
     const figure = createHTML(`
       <figure class="archive-detail__gallery-figure">
         <button class="archive-detail__gallery-image-button" type="button"></button>
+        <button
+          class="archive-detail__gallery-fullscreen"
+          type="button"
+          aria-label="Open image popup"
+          title="Open image popup"
+        >⛶</button>
         <figcaption class="archive-detail__image-description"></figcaption>
+        <dialog class="archive-detail__lightbox" aria-label="Gallery image viewer">
+          <button class="archive-detail__lightbox-close" type="button" aria-label="Close image viewer">×</button>
+          <div class="archive-detail__lightbox-content">
+            <button class="archive-detail__lightbox-previous" type="button" aria-label="Previous image">Previous</button>
+            <img class="archive-detail__lightbox-image" alt="">
+            <button class="archive-detail__lightbox-next" type="button" aria-label="Next image">Next</button>
+          </div>
+        </dialog>
       </figure>
     `);
     galleryImageButton = figure.querySelector("button");
+    const fullscreenButton = figure.querySelector(
+      ".archive-detail__gallery-fullscreen",
+    );
+    lightbox = figure.querySelector(".archive-detail__lightbox");
+    lightboxImage = lightbox.querySelector(
+      ".archive-detail__lightbox-image",
+    );
     galleryImage = createHTML(`
       <img class="archive-detail__gallery-image" alt="" loading="eager">
     `);
     galleryDescription = figure.querySelector("figcaption");
     galleryImageButton.append(galleryImage);
     galleryImageButton.addEventListener("click", advance);
+    fullscreenButton.addEventListener("click", () => {
+      lightbox.showModal();
+      document.documentElement.classList.add("archive-lightbox-open");
+    });
+    lightbox.addEventListener("close", () => {
+      document.documentElement.classList.remove("archive-lightbox-open");
+    });
+    lightbox.querySelector(".archive-detail__lightbox-close").addEventListener(
+      "click",
+      () => lightbox.close(),
+    );
+    lightbox.querySelector(
+      ".archive-detail__lightbox-previous",
+    ).addEventListener("click", () => {
+      currentIndex =
+        (currentIndex + availableAssets.length - 1) % availableAssets.length;
+      showAsset();
+    });
+    lightbox.querySelector(".archive-detail__lightbox-next").addEventListener(
+      "click",
+      advance,
+    );
+    lightbox.addEventListener("click", (event) => {
+      if (event.target === lightbox) lightbox.close();
+    });
     content.append(figure);
   }
 
@@ -382,8 +438,12 @@ function createCarousel(assets, mediaType, label) {
         "aria-label",
         `Show next gallery image (${currentIndex + 1} of ${availableAssets.length})`,
       );
-      galleryDescription.textContent = asset.g || "";
+      galleryDescription.textContent = decodeHtmlEntities(asset.g || "");
       galleryDescription.hidden = !asset.g;
+      if (lightbox) {
+        lightboxImage.src = galleryImage.src;
+        lightboxImage.alt = galleryImage.alt;
+      }
     } else {
       content.replaceChildren();
       const audio = createHTML(`
@@ -502,8 +562,70 @@ function safeHttpUrl(value) {
   }
 }
 
+function decodeHtmlEntities(value) {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = String(value);
+  return textarea.value;
+}
+
+function appendTextWithLinks(element, value) {
+  const text = String(value ?? "");
+  const urlPattern = /https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/gi;
+  let cursor = 0;
+
+  for (const match of text.matchAll(urlPattern)) {
+    const start = match.index;
+    let visibleUrl = match[0];
+    let punctuation = "";
+    while (/[.,!?;:)\]}]$/.test(visibleUrl)) {
+      punctuation = visibleUrl.slice(-1) + punctuation;
+      visibleUrl = visibleUrl.slice(0, -1);
+    }
+
+    element.append(document.createTextNode(text.slice(cursor, start)));
+    const href = safeHttpUrl(
+      /^www\./i.test(visibleUrl) ? `https://${visibleUrl}` : visibleUrl,
+    );
+    if (href) {
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.textContent = visibleUrl;
+      element.append(anchor);
+    } else {
+      element.append(document.createTextNode(visibleUrl));
+    }
+    element.append(document.createTextNode(punctuation));
+    cursor = start + match[0].length;
+  }
+
+  element.append(document.createTextNode(text.slice(cursor)));
+}
+
 function hasValue(value) {
   return value != null && String(value).trim() !== "";
+}
+
+function formatCreationDate(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    return formatDateParts(date);
+  }
+
+  const dateMatch = String(value).match(
+    /^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})\)$/,
+  );
+  if (!dateMatch) return String(value);
+
+  const [, year, month, day] = dateMatch;
+  return formatDateParts(
+    new Date(Date.UTC(Number(year), Number(month), Number(day))),
+  );
+}
+
+function formatDateParts(date) {
+  return `${date.getUTCDate()}/${date.getUTCMonth() + 1}/${date.getUTCFullYear()}`;
 }
 
 function formatSubmittedDate(value) {

@@ -106,7 +106,6 @@ function processSheet() {
 }
 function extractBlocks(url, title, thumbCell, slug) {
   const match = checkMatches(url);
-
   if (!match) {
     Logger.log(`No matching asset found at row ${index}: ${url}`);
     if (!thumbCell) {
@@ -114,9 +113,7 @@ function extractBlocks(url, title, thumbCell, slug) {
       return;
     }
   }
-
   // Logger.log(`matches ${index}: ${match.type}`);
-
   if (match) {
     handleDataInsertion(match, url, slug, title);
     handleTypeInsertion(match.type);

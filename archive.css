@@ -303,6 +303,19 @@ __ shit
   object-fit: contain;
 }
 
+@media (max-width: 700px) {
+  .archive-loading__video {
+    pointer-events: none;
+  }
+
+  .archive-loading__video::-webkit-media-controls,
+  .archive-loading__video::-webkit-media-controls-enclosure,
+  .archive-loading__video::-webkit-media-controls-panel,
+  .archive-loading__video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+  }
+}
+
 .archive-loading--error .archive-loading__video {
   display: none;
 }
@@ -832,7 +845,8 @@ button:hover {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  width: 20%;
+  width: fit-content;
+  padding: 0 1rem;
   background: var(--color--background);
 }
 
@@ -1060,7 +1074,7 @@ button:hover {
   font-size: 1rem;
   width: 100%;
   color: var(--color-darkwine);
-  white-space: nowrap;
+  /* white-space: nowrap; */
   border-radius: 13px;
 }
 .filtermenu__group--btn.active {
@@ -1600,6 +1614,9 @@ button:hover {
   align-items: center;
   width: 100%;
 }
+.pagination:not(:has(*)) {
+  display: none;
+}
 
 .pagination__status,
 .pagination__short-label {
@@ -1737,6 +1754,8 @@ button:hover {
 
   .pagination--container {
     grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0.5rem 0.5rem;
   }
   .header__bar--container {
     display: none;
