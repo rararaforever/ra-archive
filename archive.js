@@ -334,10 +334,6 @@ function saveArchiveDataCache() {
 }
 
 const archiveDataWasCached = data.length > 0 || restoreArchiveDataCache();
-if (archiveDataWasCached && archive.loading) {
-  archive.loading.hidden = true;
-  archive.loading.setAttribute("aria-busy", "false");
-}
 
 if (data.length) {
   initArchive().catch((error) => {
@@ -394,7 +390,12 @@ async function initArchive() {
   await renderArchive();
   updateTigerPadding();
   if (savedScrollPosition !== null) {
-    requestAnimationFrame(() => window.scrollTo(0, savedScrollPosition));
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, savedScrollPosition);
+        requestAnimationFrame(resolve);
+      });
+    });
   }
   await hideArchiveLoading();
   showWelcomeDialog();
