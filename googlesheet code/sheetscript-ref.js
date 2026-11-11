@@ -19,7 +19,8 @@ pdfthumb =
 flickrthumb =
   "https://d2w9rnfcy7mm78.cloudfront.net/52089755/original_3805efbbfa07f7ebb2735583dbca00c9.png?1793307583?bc=0";
 RAthumb =
-  "https://d2w9rnfcy7mm78.cloudfront.net/52089758/original_37cc9cbebffdaa151fc4fc65afa05c65.png?1793307583?bc=0";
+  "https://d2w9rnfcy7mm78.cloudfront.net/52336650/original_d9d87f1cf194f7bf988781b12e141e47.png?1793811586?bc=0";
+vimeofailedthumb = Rathumb;
 assetIdClmn = "U";
 slugIdClmn = "V";
 typeIdClmn = "W";
@@ -34,63 +35,104 @@ let sheet;
 let assetSheet;
 let service;
 let index = 2;
+let assetRowMap = new Map();
 // ————————————————————————————————————————————————————————————
 // ————————————————————————————————————————————————————————————
 // begin
 // ————————————————————————————————————————————————————————————
 // ————————————————————————————————————————————————————————————
 function myFunction() {
-  authorize();
-  init();
-  processSheet();
+  Logger.log("✦ ─────────────────────────────── ✦");
+  Logger.log("✦ The Script has started Khanh! ✦");
+  Logger.log("✦ ─────────────────────────────── ✦");
+
+  try {
+    authorize();
+    init();
+    processSheet();
+  } catch (error) {
+    logRowError(error, sheet ? Math.max(index, 2) : 1);
+    throw error;
+  }
 }
 
 function init() {
+  arenaBlockCache = {};
+
   spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   sheet = spreadsheet.getSheetByName("ALL");
 
-  assetSheet = getOrCreateAssetSheet();
-  service = getArenaService();
-  index = 2;
   if (!sheet) {
     throw new Error('Sheet "ALL" not found.');
   }
+
+  assetSheet = getOrCreateAssetSheet();
+
+  service = getArenaService();
+
+  initAssetMap();
+
+  index = 2;
+
   clearAndMove();
 }
 function clearAndMove() {
   sheet.getRange(`${assetIdClmn}:${assetIdClmn}`).clearContent();
-  const gg = SpreadsheetApp.getActiveSpreadsheet();
-  gg.setActiveSheet(assetSheet);
-  gg.moveActiveSheet(gg.getSheets().length);
-  gg.setActiveSheet(sheet);
-  const range = assetSheet.getDataRange();
-  range.setWrap(false);
-  range.setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
-  sheet.getRange("U1").setValue("Asset Ids");
-  sheet.getRange("V1").setValue("Slug Ids");
-  sheet.getRange("W1").setValue("Type");
-  sheet.getRange("X1").setValue("Thumbnail Ids");
+
+  sheet
+    .getRange("U1:X1")
+    .setValues([["Asset Ids", "Slug Ids", "Type", "Thumbnail Ids"]]);
+}
+function initAssetMap() {
+  assetRowMap = new Map();
+
+  const lastRow = assetSheet.getLastRow();
+
+  if (lastRow < 2) return;
+
+  const ids = assetSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+
+  ids.forEach((row, i) => {
+    if (row[0]) {
+      assetRowMap.set(row[0], i + 2);
+    }
+  });
 }
 //done with helpers
 // process shet
 function processSheet() {
-  // const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  // const sheet = spreadsheet.getSheetByName("ALL");
   if (!sheet) {
-    throw new Error('Sheet "Projects" not found.');
-  } else {
-    Logger.log('Sheet "Projects" found.');
+    throw new Error('Sheet "ALL" not found.');
   }
+
+  Logger.log('Sheet "ALL" found.');
   const data = sheet.getDataRange().getValues();
   const usedIds = new Set();
+  let endIndex = data.length;
 
   for (let i = 1; i < data.length; i++) {
+    const title = data[i][0];
+    if (title == null || String(title).trim() === "") {
+      endIndex = i;
+      break;
+    }
+
+    const existingId = data[i][slugIdNum - 1];
+    if (existingId != null && String(existingId).trim() !== "") {
+      usedIds.add(String(existingId));
+    }
+  }
+
+  for (let i = 1; i < endIndex; i++) {
+    index = i + 1;
     const cell = data[i][2],
       title = data[i][0],
       thumbCell = data[i][3];
     const existingId = data[i][slugIdNum - 1];
     const uniqueId = getOrCreateRowId(existingId, usedIds);
-    sheet.getRange(index, slugIdNum).setValue(uniqueId);
+    if (existingId == null || String(existingId).trim() === "") {
+      sheet.getRange(index, slugIdNum).setValue(uniqueId);
+    }
     try {
       extractBlocks(
         cell,
@@ -99,17 +141,27 @@ function processSheet() {
         uniqueId,
       );
     } catch (error) {
-      Logger.log(`Row ${index} failed: ${error.message || error}`);
+      logRowError(error);
     }
-    index++;
+  }
+}
+
+function logRowError(error, rowNumber = index) {
+  const message = error && error.message ? error.message : String(error);
+  const formattedMessage = `Row ${rowNumber} : ${message}`;
+
+  if (typeof console !== "undefined" && typeof console.error === "function") {
+    console.error(formattedMessage);
+  } else {
+    Logger.log(formattedMessage);
   }
 }
 function extractBlocks(url, title, thumbCell, slug) {
   const match = checkMatches(url);
   if (!match) {
-    Logger.log(`No matching asset found at row ${index}: ${url}`);
+    logRowError(`No matching asset found: ${url}`);
     if (!thumbCell) {
-      Logger.log(`No thumbnail found at row ${index}: ${url}`);
+      logRowError(`No thumbnail found: ${url}`);
       return;
     }
   }
@@ -173,13 +225,11 @@ function insertToMainSheet(place, value) {
 function getArenaThumb(thumb) {
   const [blockId] = seperateArenaIds(String(thumb ?? ""));
   if (!blockId) {
-    Logger.log(
-      `Could not find an Are.na block ID in thumbnail value: ${thumb}`,
-    );
+    logRowError(`Could not find an Are.na block ID in thumbnail value: ${thumb}`);
     return null;
   }
 
-  Logger.log("arena id " + blockId);
+  // Logger.log("arena id " + blockId);
   return fetchArenaBlock(blockId, service);
 }
 
@@ -294,7 +344,28 @@ function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
     } else if (match?.type == "video") {
       if (match.class == "youtube")
         thumbSrc = `https://img.youtube.com/vi/${match.match[1]}/hqdefault.jpg`;
-      if (match.class == "vimeo") thumbSrc = getVimeoThumbnail(url);
+      if (match.class == "vimeo") {
+        if (match.class == "vimeo") {
+          const result = getVimeoThumbnail(sourceUrl);
+
+          if (result.success) {
+            thumbSrc = result.thumbnail;
+          } else if (
+            result.status === "inaccessible_or_invalid_url" ||
+            result.status === "restricted_metadata_or_missing_thumbnail"
+          ) {
+            thumbSrc = vimeothumb;
+          } else {
+            thumbSrc = vimeofailedthumb;
+          }
+
+          if (result.success) {
+            Logger.log(`Row ${index} : Vimeo ${slug}: ${result.status}`);
+          } else {
+            logRowError(`Vimeo ${slug}: ${result.status}`);
+          }
+        }
+      }
     } else if (match?.class == "flickr") thumbSrc = flickrthumb;
     else if (match?.class == "reelasian") thumbSrc = RAthumb;
     row = [
@@ -312,7 +383,12 @@ function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
 }
 
 function fetchArenaBlock(blockId, service) {
+  if (arenaBlockCache[blockId]) {
+    return arenaBlockCache[blockId];
+  }
+
   const url = `https://api.are.na/v3/blocks/${blockId}`;
+
   try {
     const response = UrlFetchApp.fetch(url, {
       headers: {
@@ -320,52 +396,65 @@ function fetchArenaBlock(blockId, service) {
       },
       muteHttpExceptions: true,
     });
+
     const status = response.getResponseCode();
+
     if (status < 200 || status >= 300) {
-      Logger.log(`Are.na block ${blockId} fetch failed with status ${status}.`);
+      logRowError(`Are.na block ${blockId} failed: ${status}`);
       return null;
     }
 
-    return JSON.parse(response.getContentText());
+    const block = JSON.parse(response.getContentText());
+
+    arenaBlockCache[blockId] = block;
+
+    return block;
   } catch (error) {
-    Logger.log(
-      `Are.na block ${blockId} fetch failed: ${error.message || error}`,
-    );
+    logRowError(`Are.na fetch failed: ${error.message || error}`);
     return null;
   }
 }
 function getOrCreateAssetSheet() {
-  const gg = SpreadsheetApp.getActiveSpreadsheet();
-  let assetSheet = gg.getSheetByName("Assets");
-  assetSheet ? gg.deleteSheet(assetSheet) : null;
-  assetSheet = gg.insertSheet("Assets");
-  assetSheet.appendRow([
-    "id",
-    "title",
-    "src",
-    "thumbnailURL",
-    "thumbnailURL-small",
-    "thumbnailURL-medium",
-    "description",
-    "alt_text",
-  ]);
-  const range = assetSheet.getDataRange();
-  range.setWrap(false);
-  range.setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  let assetSheet = ss.getSheetByName("Assets");
+
+  // Only create the sheet if it doesn't exist
+  if (!assetSheet) {
+    assetSheet = ss.insertSheet("Assets");
+
+    assetSheet
+      .getRange(1, 1, 1, 8)
+      .setValues([
+        [
+          "id",
+          "title",
+          "src",
+          "thumbnailURL",
+          "thumbnailURL-small",
+          "thumbnailURL-medium",
+          "description",
+          "alt_text",
+        ],
+      ]);
+  }
+
+  assetSheet.setIndex(ss.getSheets().length);
   return assetSheet;
 }
 
 function upsertAsset(sheet, row) {
-  const data = sheet.getDataRange().getValues();
   const id = row[0];
+  const existingRow = assetRowMap.get(id);
 
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === id) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return;
-    }
+  if (existingRow) {
+    sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
+  } else {
+    sheet.appendRow(row);
+
+    const newRow = sheet.getLastRow();
+    assetRowMap.set(id, newRow);
   }
-  sheet.appendRow(row);
 }
 
 function extractAltText(block) {
@@ -374,10 +463,6 @@ function extractAltText(block) {
 
   if (block.image && block.image.alt_text) return block.image.alt_text;
   return "";
-}
-
-function isGeneratedId(value) {
-  return typeof value === "string" && /^[0-9a-f]{8}$/i.test(value);
 }
 
 function generateUniqueId(usedIds) {
@@ -389,32 +474,79 @@ function generateUniqueId(usedIds) {
 }
 
 function getOrCreateRowId(existingId, usedIds) {
-  const id =
-    isGeneratedId(existingId) && !usedIds.has(existingId)
-      ? existingId
-      : generateUniqueId(usedIds);
-  usedIds.add(id);
-  return id;
+  if (existingId != null && String(existingId).trim() !== "") {
+    usedIds.add(String(existingId));
+    return existingId;
+  }
+
+  return generateUniqueId(usedIds);
 }
 
 function getVimeoThumbnail(url) {
   try {
-    const response = UrlFetchApp.fetch(
-      `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`,
-      { muteHttpExceptions: true },
-    );
-    const code = response.getResponseCode();
+    const endpoint = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
 
-    if (code !== 200) {
-      Logger.log(`Vimeo thumbnail fetch failed with status ${code}: ${url}`);
-      return vimeothumb;
+    const response = UrlFetchApp.fetch(endpoint, {
+      muteHttpExceptions: true,
+    });
+
+    const code = response.getResponseCode();
+    const body = response.getContentText();
+
+    if (code === 200) {
+      Logger.log(`Row ${index} : Vimeo response: ${code} | ${url}`);
+    } else {
+      logRowError(`Vimeo response: ${code} | ${url}`);
     }
 
-    const data = JSON.parse(response.getContentText());
-    return data.thumbnail_url ? data.thumbnail_url : vimeothumb; // Return the thumbnail URL or a default thumbnail if not available
+    if (code === 200) {
+      const data = JSON.parse(body);
+
+      if (data.thumbnail_url) {
+        return {
+          success: true,
+          status: "success",
+          thumbnail: data.thumbnail_url,
+        };
+      }
+
+      return {
+        success: false,
+        status: "restricted_metadata_or_missing_thumbnail",
+        thumbnail: null,
+      };
+    }
+
+    if (code === 403) {
+      return {
+        success: false,
+        status: "embedding_disabled",
+        thumbnail: null,
+      };
+    }
+
+    if (code === 404) {
+      return {
+        success: false,
+        status: "inaccessible_or_invalid_url",
+        thumbnail: null,
+      };
+    }
+
+    return {
+      success: false,
+      status: "request_failed",
+      code: code,
+      thumbnail: null,
+    };
   } catch (error) {
-    Logger.log(`Vimeo thumbnail fetch failed: ${error.message || error}`);
-    return vimeothumb;
+    logRowError(`Vimeo error: ${error.message}`);
+
+    return {
+      success: false,
+      status: "network_error",
+      thumbnail: null,
+    };
   }
 }
 /* -------------------------------------------

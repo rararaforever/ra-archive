@@ -65,6 +65,10 @@ body {
   font-family: vel !important;
   line-height: 1.2;
 }
+::selection {
+  background: var(--color-green) !important;
+  color: var(--color-powder) !important;
+}
 [data-predefined-style="true"] bodycopy {
   font-family: "vel" !important;
 }
@@ -105,7 +109,7 @@ html {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
-  padding: 4rem 1rem 3rem 1rem;
+  padding: calc(var(--archive-page-header-height, 2rem) + 2rem) 1rem 3rem;
   background: var(--color-powder) !important;
 }
 
@@ -204,6 +208,7 @@ html {
   gap: 1rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--color-darkwine) !important;
+  align-items: center;
 }
 
 .archive-detail__accessibility-title {
@@ -480,5 +485,8 @@ html.archive-lightbox-open {
 
   .archive-detail__carousel-count {
     grid-row: 3;
+  }
+  .archive-page__header {
+    grid-template-columns: 0.5fr 1fr;
   }
 }

@@ -89,7 +89,6 @@ function initializePageMarkup() {
     <div class="pagination--container">
       <div class="pagination"></div>
       <div class="viewmenu--container">
-        <div class="view__title">view toggles</div>
         <div class="viewbtn--container">
           <div class="viewoptions--container" data-view-control="grid">
             <label for="gridSlider">
@@ -177,6 +176,7 @@ function initializePageMarkup() {
   `;
 
   document.body.prepend(shell.content);
+  document.documentElement.classList.add("archive-is-loading");
 }
 
 initializePageMarkup();
@@ -269,6 +269,7 @@ let facetedFilters = createDefaultFilterState();
 let activeFilters = [];
 let searchQuery = "";
 let projectPerPage = 50;
+const archiveRowsPerGridColumn = 17;
 
 /* -------------------------------------------
 __
@@ -277,7 +278,7 @@ __
 const archive = {
   projects: [],
   currentPage: 1,
-  perPage: 50,
+  perPage: 51,
   viewMode: "grid",
   search: "",
   filters: createDefaultFilterState(),
@@ -382,9 +383,12 @@ async function initArchive() {
   setupEvents();
   window.addEventListener("resize", updateTigerPadding);
   window.addEventListener("resize", updateResponsiveArchiveLayout);
-  window.matchMedia("(max-width: 999px)").addEventListener("change", () => {
-    renderPagination(Number(archive.pagination?.dataset.totalPages) || 0);
-  });
+  if (archive.pagination && "ResizeObserver" in window) {
+    const paginationObserver = new ResizeObserver(() => {
+      renderPagination(Number(archive.pagination.dataset.totalPages) || 0);
+    });
+    paginationObserver.observe(archive.pagination);
+  }
   updateViewControls();
   updateFilterVisibility();
   await renderArchive();
@@ -536,6 +540,7 @@ async function hideArchiveLoading() {
   if (archiveDataWasCached) {
     archive.loading.hidden = true;
     archive.loading.setAttribute("aria-busy", "false");
+    document.documentElement.classList.remove("archive-is-loading");
     return;
   }
 
@@ -553,6 +558,7 @@ async function hideArchiveLoading() {
   );
   archive.loading.hidden = true;
   archive.loading.querySelector("video")?.pause();
+  document.documentElement.classList.remove("archive-is-loading");
 }
 
 function showWelcomeDialog() {
@@ -604,6 +610,7 @@ function showArchiveLoadingError() {
   archive.loading.classList.remove("is-fading");
   archive.loading.classList.add("archive-loading--error");
   archive.loading.setAttribute("aria-busy", "false");
+  document.documentElement.classList.remove("archive-is-loading");
 
   if (message) {
     message.textContent =
@@ -745,6 +752,20 @@ function updateListRowSize(size) {
   archive.container.dataset.rowSize = size;
 }
 
+function syncPageSizeToGrid() {
+  if (archive.viewMode !== "grid") return false;
+
+  const gridColumns = window.matchMedia("(max-width: 900px)").matches
+    ? 2
+    : Number(document.querySelector("#gridSlider")?.value) || 3;
+  const pageSize = gridColumns * archiveRowsPerGridColumn;
+  if (archive.perPage === pageSize) return false;
+
+  archive.perPage = pageSize;
+  archive.currentPage = 1;
+  return true;
+}
+
 function updateFilterVisibility() {
   const filterParent = document.querySelector(".filter--parent");
   const shouldHide = archive.viewMode === "random";
@@ -783,6 +804,7 @@ function updateResponsiveArchiveLayout(shouldRender = true) {
       archive.container.style.setProperty("--grid-columns", gridSlider.value);
     }
   }
+  const pageSizeChanged = syncPageSizeToGrid();
 
   document.querySelectorAll(".view__btn[data-view]").forEach((button) => {
     const isActive = button.dataset.view === archive.viewMode;
@@ -794,7 +816,10 @@ function updateResponsiveArchiveLayout(shouldRender = true) {
   updateFilterVisibility();
   updateTigerPadding();
 
-  if (shouldRender && previousViewMode !== archive.viewMode) {
+  if (
+    shouldRender &&
+    (previousViewMode !== archive.viewMode || pageSizeChanged)
+  ) {
     requestArchiveRender();
   }
 }
@@ -807,6 +832,9 @@ function setupViewSliders() {
     archive.container?.style.setProperty("--grid-columns", gridSlider.value);
     if (gridValue) {
       gridValue.textContent = gridSlider.value;
+    }
+    if (syncPageSizeToGrid()) {
+      requestArchiveRender();
     }
   });
 
@@ -1074,6 +1102,57 @@ function setupEvents() {
       saveArchiveNavigationState();
       window.location.href = `/archive-page#${slug}`;
     });
+
+    let touchStart = null;
+    archive.container.addEventListener(
+      "touchstart",
+      (event) => {
+        if (
+          !window.matchMedia("(max-width: 900px)").matches ||
+          event.touches.length !== 1 ||
+          event.target.closest(
+            "button, a, input, textarea, select, video, audio, [contenteditable='true']",
+          )
+        ) {
+          touchStart = null;
+          return;
+        }
+
+        const touch = event.touches[0];
+        touchStart = { x: touch.clientX, y: touch.clientY };
+      },
+      { passive: true },
+    );
+    archive.container.addEventListener(
+      "touchend",
+      (event) => {
+        if (!touchStart) return;
+
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - touchStart.x;
+        const deltaY = touch.clientY - touchStart.y;
+        touchStart = null;
+
+        if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) {
+          return;
+        }
+
+        const totalPages = Number(archive.pagination?.dataset.totalPages) || 0;
+        const nextPage = archive.currentPage + (deltaX < 0 ? 1 : -1);
+        if (totalPages < 2 || nextPage < 1 || nextPage > totalPages) return;
+
+        archive.currentPage = nextPage;
+        requestArchiveRender();
+      },
+      { passive: true },
+    );
+    archive.container.addEventListener(
+      "touchcancel",
+      () => {
+        touchStart = null;
+      },
+      { passive: true },
+    );
   }
 
   const viewButtons = document.querySelector(".viewbtn--container");
@@ -1089,6 +1168,7 @@ function setupEvents() {
       archive.viewMode = viewButton.dataset.view;
       archive.randomizedProjects = [];
       cancelRandomizerSpin();
+      syncPageSizeToGrid();
 
       viewButtons
         .querySelectorAll(".view__btn[data-view]")
@@ -1701,7 +1781,7 @@ function createCard(project, view) {
   return card;
 }
 
-function renderPagination(totalPages) {
+function renderPagination(totalPages, compactMode = 0) {
   if (!archive.pagination) {
     return;
   }
@@ -1724,14 +1804,15 @@ function renderPagination(totalPages) {
   previous.disabled = archive.currentPage === 1;
   fragment.append(previous);
 
-  const useEllipses = window.matchMedia("(max-width: 999px)").matches;
+  const useEllipses = compactMode > 0;
+  const pageRadius = compactMode > 1 ? 0 : 2;
   const visiblePages = new Set();
   if (useEllipses) {
     visiblePages.add(1);
     visiblePages.add(totalPages);
     for (
-      let page = Math.max(1, archive.currentPage - 2);
-      page <= Math.min(totalPages, archive.currentPage + 2);
+      let page = Math.max(1, archive.currentPage - pageRadius);
+      page <= Math.min(totalPages, archive.currentPage + pageRadius);
       page += 1
     ) {
       visiblePages.add(page);
@@ -1759,13 +1840,12 @@ function renderPagination(totalPages) {
       ellipsis.type = "button";
       ellipsis.className = "pagination__ellipsis";
       ellipsis.dataset.page =
-        page < archive.currentPage
-          ? Math.max(previousPage + 1, page - 5)
-          : Math.min(page - 1, previousPage + 5);
+        page < archive.currentPage ? page - 1 : previousPage + 1;
       ellipsis.setAttribute(
         "aria-label",
-        `Jump to page ${ellipsis.dataset.page}`,
+        `Show page ${ellipsis.dataset.page}`,
       );
+      ellipsis.title = `Show page ${ellipsis.dataset.page}`;
       ellipsis.textContent = "…";
       fragment.append(ellipsis);
     }
@@ -1799,6 +1879,11 @@ function renderPagination(totalPages) {
   fragment.append(next);
 
   archive.pagination.append(fragment);
+  if (archive.pagination.scrollWidth > archive.pagination.clientWidth) {
+    if (compactMode < 2) {
+      renderPagination(totalPages, compactMode + 1);
+    }
+  }
 }
 
 /* -------------------------------------------

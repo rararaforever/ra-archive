@@ -205,6 +205,10 @@
   /* typography */
   --font--size--header: 1.2rem;
 }
+::selection {
+  background: var(--color-green) !important;
+  color: var(--color-powder) !important;
+}
 /* -------------------------------------------
 __ override cargo bs
 //,,------------------------------------------*/
@@ -303,6 +307,12 @@ __ shit
   object-fit: contain;
 }
 
+html.archive-is-loading,
+html.archive-is-loading body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 @media (max-width: 700px) {
   .archive-loading__video {
     pointer-events: none;
@@ -312,6 +322,12 @@ __ shit
   .archive-loading__video::-webkit-media-controls-enclosure,
   .archive-loading__video::-webkit-media-controls-panel,
   .archive-loading__video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+  }
+
+  .archive-loading__video::-moz-media-controls,
+  .archive-loading__video::-moz-media-controls-overlay-play-button,
+  .archive-loading__video::-moz-media-controls-play-button {
     display: none !important;
   }
 }
@@ -619,6 +635,10 @@ button:hover {
 .infocard__medium:nth-child(3n + 2) {
   background: var(--color-darkwine);
   color: var(--color-lime);
+}
+.infocard__medium:nth-child(3n) {
+  background: var(--color-green);
+  color: var(--color-powder);
 }
 
 .tiger.is-compact-rows .archivecard--list .infocard__des,
@@ -1244,6 +1264,11 @@ button:hover {
   max-height: 35px;
   font-weight: bold;
 }
+.filter__clps:hover {
+  border: solid 1px var(--color-green);
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
 .filter__clps span {
   background: var(--color-darkgreen);
   /* padding: 0.2rem 0.2rem; */
@@ -1315,6 +1340,20 @@ button:hover {
   border: 1px solid var(--color-darkwine);
   border-radius: 1rem;
 }
+.filter__grid > :nth-child(3n + 1):hover,
+.filter__grid > :nth-child(3n + 2):hover {
+  border: 1.5px solid var(--color-green);
+  cursor: pointer;
+}
+
+.filter__grid > :nth-child(3n + 3):hover {
+  border: 3px double var(--color-green);
+}
+/* .filter--parent::before:hover,
+.filter__search::before:hover {
+  border: 1px solid var(--color-green);
+  border-radius: 0.5rem;
+} */
 
 .filter__grid.collapse {
   display: none;
@@ -1441,6 +1480,7 @@ button:hover {
   justify-self: right;
   height: 100%;
   z-index: 2;
+  grid-column: 2;
 }
 
 .view__btn {
@@ -1449,6 +1489,11 @@ button:hover {
   border: none;
   border-radius: 0.5rem;
   font-size: 1rem;
+  height: 100%;
+}
+.view__btn:hover {
+  border: inset 2px var(--color-powder);
+  cursor: pointer;
 }
 
 .viewoptions--container[hidden] {
@@ -1551,10 +1596,13 @@ button:hover {
   }
 
   .filter__backdrop {
-    display: none !important;
+    display: block !important;
+    z-index: 9;
   }
 
   .header__mobile-search {
+    position: relative;
+    z-index: 10;
     display: block;
     padding: 0.25rem 1rem 0.75rem;
     background: var(--color--background);
@@ -1574,6 +1622,10 @@ button:hover {
     --grid-columns: 2 !important;
   }
 
+  .tiger {
+    touch-action: pan-y;
+  }
+
   .viewoptions--container[data-view-control="grid"],
   .view__btn[data-view="random"] {
     display: none;
@@ -1589,7 +1641,7 @@ button:hover {
   z-index: 20;
   display: grid;
   flex-direction: row;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
@@ -1599,13 +1651,14 @@ button:hover {
   overflow: hidden;
   background: var(--color--background);
   border-top: 2px solid var(--color-darkwine);
+  min-height: 42px;
 }
 
 .pagination {
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 95%;
+  max-width: 100%;
   gap: 0.5rem;
   padding: 0 1rem;
   overflow-x: auto;
@@ -1647,6 +1700,12 @@ button:hover {
   border-right-color: var(--color-darkgreen);
   color: var(--color-darkwine);
 }
+.pagination__page:hover {
+  background: var(--color-green);
+  border: 1px inset var(--color-darkwine);
+  color: white;
+  cursor: pointer;
+}
 
 .pagination__page.active {
   background: var(--color-green);
@@ -1664,10 +1723,10 @@ button:hover {
 }
 
 .pagination__ellipsis {
-  border: 0;
+  border: 1px solid var(--color-darkwine);
   padding: 0.2rem;
-  color: var(--color-gray2);
-  background: var(--color-darkwine);
+  color: var(--color-darkwine);
+  background: var(--color-powder);
   width: 30px;
   aspect-ratio: 1 / 1;
   border-radius: 100%;

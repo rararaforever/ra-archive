@@ -100,6 +100,10 @@ function generatePage() {
       <div class="header__title">Reel Asian Archive</div>
     </header>
   `;
+  updateArchivePageHeaderOffset();
+  window.addEventListener("resize", updateArchivePageHeaderOffset, {
+    passive: true,
+  });
   siteHeader
     .querySelector(".archive-detail__back")
     .addEventListener("click", () => {
@@ -168,6 +172,8 @@ function generatePage() {
       const value = row[field.col];
       const description = info.querySelector("dd");
       if (field.col === "e") {
+        console.log("Description value:", value);
+        console.log("Description element:", description);
         appendTextWithLinks(description, value);
       } else {
         description.textContent =
@@ -337,12 +343,31 @@ function generatePage() {
   window.ele_tiger.replaceChildren(page);
 }
 
+function updateArchivePageHeaderOffset() {
+  const siteHeader = document.querySelector(".header");
+  if (!siteHeader || !window.ele_tiger) return;
+
+  window.ele_tiger.style.setProperty(
+    "--archive-page-header-height",
+    `${siteHeader.offsetHeight}px`,
+  );
+}
+
 function createCarousel(assets, mediaType, label) {
   const availableAssets = assets.filter((asset) => getAssetSource(asset));
   if (availableAssets.length === 0) {
     return createHTML(
       `<p class="archive-detail__empty">${label} unavailable.</p>`,
     );
+  }
+
+  if (mediaType === "audio" && availableAssets.length === 1) {
+    const audio = createHTML(
+      '<audio class="archive-detail__audio-player" controls preload="metadata"></audio>',
+    );
+    audio.src = getAssetSource(availableAssets[0]);
+    audio.setAttribute("aria-label", availableAssets[0].b || "Audio");
+    return audio;
   }
 
   const carousel = createHTML(`
@@ -390,9 +415,7 @@ function createCarousel(assets, mediaType, label) {
       ".archive-detail__gallery-fullscreen",
     );
     lightbox = figure.querySelector(".archive-detail__lightbox");
-    lightboxImage = lightbox.querySelector(
-      ".archive-detail__lightbox-image",
-    );
+    lightboxImage = lightbox.querySelector(".archive-detail__lightbox-image");
     galleryImage = createHTML(`
       <img class="archive-detail__gallery-image" alt="" loading="eager">
     `);
@@ -406,21 +429,19 @@ function createCarousel(assets, mediaType, label) {
     lightbox.addEventListener("close", () => {
       document.documentElement.classList.remove("archive-lightbox-open");
     });
-    lightbox.querySelector(".archive-detail__lightbox-close").addEventListener(
-      "click",
-      () => lightbox.close(),
-    );
-    lightbox.querySelector(
-      ".archive-detail__lightbox-previous",
-    ).addEventListener("click", () => {
-      currentIndex =
-        (currentIndex + availableAssets.length - 1) % availableAssets.length;
-      showAsset();
-    });
-    lightbox.querySelector(".archive-detail__lightbox-next").addEventListener(
-      "click",
-      advance,
-    );
+    lightbox
+      .querySelector(".archive-detail__lightbox-close")
+      .addEventListener("click", () => lightbox.close());
+    lightbox
+      .querySelector(".archive-detail__lightbox-previous")
+      .addEventListener("click", () => {
+        currentIndex =
+          (currentIndex + availableAssets.length - 1) % availableAssets.length;
+        showAsset();
+      });
+    lightbox
+      .querySelector(".archive-detail__lightbox-next")
+      .addEventListener("click", advance);
     lightbox.addEventListener("click", (event) => {
       if (event.target === lightbox) lightbox.close();
     });
@@ -569,7 +590,11 @@ function decodeHtmlEntities(value) {
 }
 
 function appendTextWithLinks(element, value) {
-  const text = String(value ?? "");
+  // const text = String(value ?? "");
+  const text = String(value ?? "")
+    .replace(/^"/, "“")
+    .replace(/"(?=\s*\n\n)/, "”");
+  console.log("Processed text:", text);
   const urlPattern = /https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/gi;
   let cursor = 0;
 
@@ -609,7 +634,9 @@ function hasValue(value) {
 
 function formatCreationDate(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
-    const date = new Date(Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000);
+    const date = new Date(
+      Date.UTC(1899, 11, 30) + Math.floor(value) * 86400000,
+    );
     return formatDateParts(date);
   }
 
