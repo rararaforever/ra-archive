@@ -1133,7 +1133,10 @@ function setupEvents() {
         const deltaY = touch.clientY - touchStart.y;
         touchStart = null;
 
-        if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) {
+        if (
+          Math.abs(deltaX) < 60 ||
+          Math.abs(deltaX) < Math.abs(deltaY) * 1.3
+        ) {
           return;
         }
 
@@ -1841,10 +1844,7 @@ function renderPagination(totalPages, compactMode = 0) {
       ellipsis.className = "pagination__ellipsis";
       ellipsis.dataset.page =
         page < archive.currentPage ? page - 1 : previousPage + 1;
-      ellipsis.setAttribute(
-        "aria-label",
-        `Show page ${ellipsis.dataset.page}`,
-      );
+      ellipsis.setAttribute("aria-label", `Show page ${ellipsis.dataset.page}`);
       ellipsis.title = `Show page ${ellipsis.dataset.page}`;
       ellipsis.textContent = "…";
       fragment.append(ellipsis);

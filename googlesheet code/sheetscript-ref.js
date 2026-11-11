@@ -50,6 +50,7 @@ function myFunction() {
     authorize();
     init();
     processSheet();
+    Logger.log("✦ The Script has finished Khanh! ✦");
   } catch (error) {
     logRowError(error, sheet ? Math.max(index, 2) : 1);
     throw error;
@@ -225,7 +226,9 @@ function insertToMainSheet(place, value) {
 function getArenaThumb(thumb) {
   const [blockId] = seperateArenaIds(String(thumb ?? ""));
   if (!blockId) {
-    logRowError(`Could not find an Are.na block ID in thumbnail value: ${thumb}`);
+    logRowError(
+      `Could not find an Are.na block ID in thumbnail value: ${thumb}`,
+    );
     return null;
   }
 
