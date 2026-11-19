@@ -355,7 +355,7 @@ html.archive-is-loading body {
 .archive-render-loading {
   position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
