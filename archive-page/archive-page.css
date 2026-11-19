@@ -296,9 +296,9 @@ html {
   right: 0.75rem;
   z-index: 1;
   padding: 0.15rem 0.4rem 0.3rem 0.4rem;
-  border: 1px solid var(--color-gray2);
+  border: 2px solid #f48f8c;
   border-radius: 0.25rem;
-  background: var(--color-gray1);
+  background: #c2d6ec;
   color: var(--color-darkwine);
   font-size: 1.5rem;
   line-height: 1;
@@ -384,7 +384,8 @@ html.archive-lightbox-open {
   }
 }
 
-.archive-detail__link-preview {
+.archive-detail__link-preview,
+.archive-detail__thumbnail {
   max-width: 100%;
   margin: 0;
 }
@@ -410,7 +411,8 @@ html.archive-lightbox-open {
   object-fit: contain;
 }
 
-.archive-detail__link-thumbnail {
+.archive-detail__link-thumbnail,
+.archive-detail__thumbnail-image {
   display: block;
   max-width: 100%;
   max-height: 75vh;

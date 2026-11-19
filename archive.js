@@ -249,12 +249,16 @@ let expandSign = "⤡";
 let closeSign = "x";
 const archiveLoadingStartedAt = performance.now();
 const archiveLoadingMinimumDuration = 3100;
-const archiveLoadingFadeDuration = 250;
+const archiveReducedMotion = window.matchMedia(
+  "(prefers-reduced-motion: reduce)",
+).matches;
+const archiveLoadingFadeDuration = archiveReducedMotion ? 0 : 1400;
 const archiveRenderMinimumDuration = 500;
+const archiveRandomizerReelDuration = archiveReducedMotion ? 0 : 3000;
+const archiveRandomizerReelStagger = archiveReducedMotion ? 0 : 350;
+const archiveRandomizerCardCount = 8;
 const archiveWelcomeStorageKey = "reelAsianArchiveWelcomeSeen";
 const archiveNavigationStateKey = "reelAsianArchiveNavigationState";
-// Set this to the URL of the video played whenever the randomizer is spun.
-const archiveSpinAnimationSource = "";
 let archiveRenderRequestId = 0;
 
 /* -------------------------------------------
@@ -553,12 +557,12 @@ async function hideArchiveLoading() {
 
   archive.loading.setAttribute("aria-busy", "false");
   archive.loading.classList.add("is-fading");
+  document.documentElement.classList.remove("archive-is-loading");
   await new Promise((resolve) =>
     setTimeout(resolve, archiveLoadingFadeDuration),
   );
   archive.loading.hidden = true;
   archive.loading.querySelector("video")?.pause();
-  document.documentElement.classList.remove("archive-is-loading");
 }
 
 function showWelcomeDialog() {
@@ -659,9 +663,21 @@ function prepProjects() {
   });
 }
 
-async function renderArchive() {
+async function renderArchive(animateTiger = false) {
   if (!archive.container) {
     return;
+  }
+
+  if (archive.randomizerTimer) {
+    cancelRandomizerSpin();
+  }
+
+  const shouldAnimateTiger =
+    animateTiger && archive.container.childElementCount > 0;
+  if (shouldAnimateTiger) {
+    archive.container.classList.add("is-transitioning-up");
+  } else {
+    archive.container.classList.remove("is-transitioning-up");
   }
 
   const requestId = ++archiveRenderRequestId;
@@ -689,6 +705,10 @@ async function renderArchive() {
     Math.min(archive.currentPage, totalPages || 1),
   );
   archive.container.setAttribute("data-view", archive.viewMode);
+  document.documentElement.classList.toggle(
+    "archive-randomizer-view",
+    archive.viewMode === "random",
+  );
 
   await new Promise((resolve) =>
     requestAnimationFrame(() => requestAnimationFrame(resolve)),
@@ -716,11 +736,14 @@ async function renderArchive() {
       archive.renderLoading.querySelector("video")?.pause();
     }
     archive.container.removeAttribute("aria-busy");
+    requestAnimationFrame(() => {
+      archive.container.classList.remove("is-transitioning-up");
+    });
   }
 }
 
-function requestArchiveRender() {
-  renderArchive().catch((error) => {
+function requestArchiveRender(animateTiger = false) {
+  renderArchive(animateTiger).catch((error) => {
     console.error("❌ Failed to render archive:", error);
     showArchiveLoadingError();
   });
@@ -820,7 +843,7 @@ function updateResponsiveArchiveLayout(shouldRender = true) {
     shouldRender &&
     (previousViewMode !== archive.viewMode || pageSizeChanged)
   ) {
-    requestArchiveRender();
+    requestArchiveRender(previousViewMode !== archive.viewMode);
   }
 }
 
@@ -1184,7 +1207,7 @@ function setupEvents() {
       updateViewControls();
       updateFilterVisibility();
       updateTigerPadding();
-      requestArchiveRender();
+      requestArchiveRender(true);
     });
   }
 
@@ -1566,30 +1589,18 @@ function renderRandomizer(projects) {
   machine.className = "archive-slot-machine";
   machine.setAttribute("aria-label", "Random project picker");
 
-  const animation = document.createElement("video");
-  animation.className = "archive-slot-machine__animation";
-  animation.setAttribute("aria-hidden", "true");
-  animation.muted = true;
-  animation.playsInline = true;
-  animation.preload = "none";
-  animation.hidden = true;
-  machine.append(animation);
-
   const spinButton = document.createElement("button");
   const isSpinning = Boolean(archive.randomizerTimer);
   spinButton.type = "button";
   spinButton.className = "archive-slot-machine__spin";
   spinButton.dataset.action = "spin";
   spinButton.textContent = isSpinning
-    ? "Spinning..."
+    ? "loaddddinggg..."
     : projects.length
-      ? "Spin for a project"
-      : "No projects to spin";
+      ? "Click for Random Archive Entry"
+      : "No projects to pick!";
   spinButton.disabled = isSpinning || projects.length === 0;
   machine.classList.toggle("is-spinning", isSpinning);
-  animation.hidden = !isSpinning || !archiveSpinAnimationSource;
-  machine.append(spinButton);
-
   const reels = document.createElement("div");
   reels.className = "archive-slot-machine__reels";
   reels.setAttribute("aria-live", "polite");
@@ -1619,6 +1630,7 @@ function renderRandomizer(projects) {
   }
 
   machine.append(reels);
+  machine.append(spinButton);
   archive.container.append(machine);
 }
 
@@ -1633,32 +1645,64 @@ function spinRandomizer() {
     return;
   }
 
+  document.documentElement.classList.add("archive-is-randomizing");
+  archive.randomizedProjects = pickRandomProjects(archive.filteredProjects, 3);
   machine.classList.add("is-spinning");
   spinButton.disabled = true;
   spinButton.textContent = "Spinning...";
 
-  const animation = machine.querySelector(".archive-slot-machine__animation");
-  if (archiveSpinAnimationSource && animation) {
-    animation.hidden = false;
-    animation.src = archiveSpinAnimationSource;
-    animation.currentTime = 0;
-    animation.load();
-    animation.onended = finishRandomizerSpin;
-    animation.onerror = () => {
-      console.error("Unable to load the randomizer video animation.");
-      finishRandomizerSpin();
-    };
-    animation.play().catch((error) => {
-      console.error("Unable to play the randomizer video animation:", error);
-      finishRandomizerSpin();
-    });
-  }
+  const reels = machine.querySelector(".archive-slot-machine__reels");
+  reels.replaceChildren();
+  reels.setAttribute("aria-busy", "true");
 
+  const rollingReels = archive.randomizedProjects.map((project, index) => {
+    const reel = document.createElement("div");
+    reel.className =
+      "archive-slot-machine__reel archive-slot-machine__reel--rolling";
+    reel.setAttribute("aria-label", `Random pick ${index + 1}`);
+
+    const strip = document.createElement("div");
+    strip.className = "archive-slot-machine__strip";
+    strip.setAttribute("aria-hidden", "true");
+
+    for (
+      let cardIndex = 0;
+      cardIndex < archiveRandomizerCardCount;
+      cardIndex += 1
+    ) {
+      const rollingProject =
+        archive.filteredProjects[
+          Math.floor(Math.random() * archive.filteredProjects.length)
+        ];
+      strip.append(createRandomizerRollingCard(rollingProject));
+    }
+    strip.append(createRandomizerRollingCard(project));
+    reel.append(strip);
+    reels.append(reel);
+    return { reel, strip, index };
+  });
+
+  requestAnimationFrame(() => {
+    rollingReels.forEach(({ strip, index }) => {
+      strip.style.transitionDuration = `${archiveRandomizerReelDuration + archiveRandomizerReelStagger * index}ms`;
+    });
+
+    requestAnimationFrame(() => {
+      rollingReels.forEach(({ reel, strip }) => {
+        strip.style.transform = `translateY(-${strip.scrollHeight - reel.clientHeight}px)`;
+      });
+      if (!archiveReducedMotion) {
+        animateRandomizerPerspective(rollingReels);
+      }
+    });
+  });
+
+  const spinDuration =
+    archiveRandomizerReelDuration +
+    archiveRandomizerReelStagger * Math.max(0, rollingReels.length - 1);
   archive.randomizerTimer = window.setTimeout(
-    () => {
-      finishRandomizerSpin();
-    },
-    archiveSpinAnimationSource ? 15000 : 1200,
+    finishRandomizerSpin,
+    spinDuration + 200,
   );
 }
 
@@ -1669,22 +1713,75 @@ function finishRandomizerSpin() {
 
   window.clearTimeout(archive.randomizerTimer);
   archive.randomizerTimer = null;
-  archive.randomizedProjects = pickRandomProjects(archive.filteredProjects, 3);
-  requestArchiveRender();
+  archive.container.replaceChildren();
+  renderRandomizer(archive.filteredProjects);
+  document.documentElement.classList.remove("archive-is-randomizing");
 }
 
 function cancelRandomizerSpin() {
   window.clearTimeout(archive.randomizerTimer);
   archive.randomizerTimer = null;
+  archive.randomizedProjects = [];
+  document.documentElement.classList.remove("archive-is-randomizing");
+}
 
-  const animation = archive.container?.querySelector(
-    ".archive-slot-machine__animation",
-  );
-  if (animation) {
-    animation.pause();
-    animation.removeAttribute("src");
-    animation.load();
+function createRandomizerRollingCard(project) {
+  const frame = document.createElement("div");
+  frame.className = "archive-slot-machine__card-window";
+
+  const card = createCard(project, "random");
+  card.classList.add("archive-slot-machine__rolling-card");
+  frame.append(card);
+  return frame;
+}
+
+function animateRandomizerPerspective(rollingReels) {
+  function updatePerspective() {
+    if (!archive.randomizerTimer) {
+      return;
+    }
+
+    const updates = [];
+    rollingReels.forEach(({ reel, strip }) => {
+      const reelBounds = reel.getBoundingClientRect();
+      if (!reelBounds.height) {
+        return;
+      }
+
+      const reelCenter = reelBounds.top + reelBounds.height / 2;
+      strip
+        .querySelectorAll(".archive-slot-machine__card-window")
+        .forEach((frame) => {
+          const frameBounds = frame.getBoundingClientRect();
+          const distanceFromCenter = Math.max(
+            -1,
+            Math.min(
+              1,
+              (reelCenter - (frameBounds.top + frameBounds.height / 2)) /
+                (reelBounds.height / 2),
+            ),
+          );
+          const distance = Math.abs(distanceFromCenter);
+          updates.push({
+            card: frame.firstElementChild,
+            angle: distanceFromCenter * 28,
+            depth: distance * -60,
+            opacity: 1 - distance * 0.18,
+            scale: 1 - distance * 0.08,
+          });
+        });
+    });
+
+    updates.forEach(({ card, angle, depth, opacity, scale }) => {
+      card.style.setProperty("--slot-card-angle", `${angle}deg`);
+      card.style.setProperty("--slot-card-depth", `${depth}px`);
+      card.style.setProperty("--slot-card-opacity", String(opacity));
+      card.style.setProperty("--slot-card-scale", String(scale));
+    });
+    requestAnimationFrame(updatePerspective);
   }
+
+  requestAnimationFrame(updatePerspective);
 }
 
 function pickRandomProjects(projects, count) {

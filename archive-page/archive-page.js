@@ -172,8 +172,6 @@ function generatePage() {
       const value = row[field.col];
       const description = info.querySelector("dd");
       if (field.col === "e") {
-        console.log("Description value:", value);
-        console.log("Description element:", description);
         appendTextWithLinks(description, value);
       } else {
         description.textContent =
@@ -197,8 +195,45 @@ function generatePage() {
   const media = page.querySelector(".archive-detail__media");
   const sourceIds = parseAssetIds(row.u);
   const assets = getAssets(sourceIds);
+  console.log(
+    `Found ${assets.length} assets for archive entry "${window.slug}".`,
+    assets,
+  );
 
   switch (type) {
+    case "":
+    case "empty": {
+      parseAssetIds(row.x).forEach((assetId, index) => {
+        const asset = window.lookup[assetId];
+        if (!asset) {
+          console.warn(`No asset found for archive thumbnail "${assetId}".`);
+          return;
+        }
+
+        const thumbnailUrl = safeHttpUrl(asset.e);
+        if (!thumbnailUrl) {
+          console.warn(
+            `No thumbnail URL found for archive asset "${assetId}".`,
+          );
+          return;
+        }
+
+        const thumbnail = createHTML(`
+          <figure class="archive-detail__thumbnail">
+            <img class="archive-detail__thumbnail-image" alt="" loading="lazy">
+            <figcaption class="archive-detail__image-description"></figcaption>
+          </figure>
+        `);
+        const image = thumbnail.querySelector("img");
+        image.src = thumbnailUrl;
+        image.alt = asset.f || asset.b || `Archive thumbnail ${index + 1}`;
+        const caption = thumbnail.querySelector("figcaption");
+        caption.textContent = decodeHtmlEntities(asset.g || "");
+        caption.hidden = !asset.g;
+        media.append(thumbnail);
+      });
+      break;
+    }
     case "gallery":
       media.append(createCarousel(assets, "image", "Gallery"));
       break;
@@ -278,6 +313,7 @@ function generatePage() {
       const videoAsset = assets.find((asset) => getAssetSource(asset));
       const source = videoAsset && getAssetSource(videoAsset);
       const embedUrl = source && getVideoEmbedUrl(source);
+      console.log(`Video asset:`, videoAsset);
       console.log(
         `Generating video embed for slug "${window.slug}" with source "${embedUrl}".`,
       );
@@ -562,6 +598,7 @@ function getAssets(assetIds) {
       console.warn(`No asset found for archive media "${assetId}".`);
       return [];
     }
+    console.log(asset);
     return [asset];
   });
 }
@@ -573,8 +610,25 @@ function getAssetSource(asset) {
 function safeHttpUrl(value) {
   if (typeof value !== "string" || !value.trim()) return null;
 
+  const trimmedValue = value.trim();
+  const hasHttpScheme = /^https?:\/\//i.test(trimmedValue);
+  const hasUnsupportedScheme =
+    /^[a-z][a-z\d+.-]*:/i.test(trimmedValue) && !hasHttpScheme;
+  if (hasUnsupportedScheme) {
+    return null;
+  }
+
+  const normalizedValue = hasHttpScheme
+    ? trimmedValue
+    : trimmedValue.startsWith("//")
+      ? `https:${trimmedValue}`
+      : /^[^/?#\s]+(?:[/?#]|$)/.test(trimmedValue)
+        ? `https://${trimmedValue}`
+        : null;
+  if (!normalizedValue) return null;
+
   try {
-    const url = new URL(value.trim());
+    const url = new URL(normalizedValue);
     return url.protocol === "http:" || url.protocol === "https:"
       ? url.href
       : null;
@@ -594,8 +648,8 @@ function appendTextWithLinks(element, value) {
   const text = String(value ?? "")
     .replace(/^"/, "“")
     .replace(/"(?=\s*\n\n)/, "”");
-  console.log("Processed text:", text);
-  const urlPattern = /https?:\/\/[^\s<>"']+|www\.[^\s<>"']+/gi;
+  const urlPattern =
+    /https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}(?:\/[^\s<>"']*)?/gi;
   let cursor = 0;
 
   for (const match of text.matchAll(urlPattern)) {
@@ -609,7 +663,7 @@ function appendTextWithLinks(element, value) {
 
     element.append(document.createTextNode(text.slice(cursor, start)));
     const href = safeHttpUrl(
-      /^www\./i.test(visibleUrl) ? `https://${visibleUrl}` : visibleUrl,
+      /^https?:\/\//i.test(visibleUrl) ? visibleUrl : `https://${visibleUrl}`,
     );
     if (href) {
       const anchor = document.createElement("a");

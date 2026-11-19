@@ -20,7 +20,7 @@ flickrthumb =
   "https://d2w9rnfcy7mm78.cloudfront.net/52089755/original_3805efbbfa07f7ebb2735583dbca00c9.png?1793307583?bc=0";
 RAthumb =
   "https://d2w9rnfcy7mm78.cloudfront.net/52336650/original_d9d87f1cf194f7bf988781b12e141e47.png?1793811586?bc=0";
-vimeofailedthumb = Rathumb;
+vimeofailedthumb = RAthumb;
 assetIdClmn = "U";
 slugIdClmn = "V";
 typeIdClmn = "W";
@@ -36,6 +36,7 @@ let assetSheet;
 let service;
 let index = 2;
 let assetRowMap = new Map();
+let arenaBlockCache = {};
 // ————————————————————————————————————————————————————————————
 // ————————————————————————————————————————————————————————————
 // begin
@@ -144,6 +145,7 @@ function processSheet() {
     } catch (error) {
       logRowError(error);
     }
+    Logger.log(`Finished processing row ${index}.`);
   }
 }
 
@@ -159,18 +161,20 @@ function logRowError(error, rowNumber = index) {
 }
 function extractBlocks(url, title, thumbCell, slug) {
   const match = checkMatches(url);
-  if (!match) {
+  if (!match && url !== "") {
     logRowError(`No matching asset found: ${url}`);
     if (!thumbCell) {
       logRowError(`No thumbnail found: ${url}`);
       return;
     }
+  } else if (!match && url === "") {
+    logRowError(`No URL provided for title: ${title}`);
   }
   // Logger.log(`matches ${index}: ${match.type}`);
   if (match) {
     handleDataInsertion(match, url, slug, title);
     handleTypeInsertion(match.type);
-  }
+  } else handleTypeInsertion("empty");
   handleThumbnailInsertion(match, url, thumbCell, title, slug);
 }
 function handleArena(blockIds, match) {
@@ -349,7 +353,7 @@ function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
         thumbSrc = `https://img.youtube.com/vi/${match.match[1]}/hqdefault.jpg`;
       if (match.class == "vimeo") {
         if (match.class == "vimeo") {
-          const result = getVimeoThumbnail(sourceUrl);
+          const result = getVimeoThumbnail(url);
 
           if (result.success) {
             thumbSrc = result.thumbnail;
@@ -363,9 +367,9 @@ function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
           }
 
           if (result.success) {
-            Logger.log(`Row ${index} : Vimeo ${slug}: ${result.status}`);
+            // Logger.log(`Row ${index} : Vimeo ${slug}: ${result.status}`);
           } else {
-            logRowError(`Vimeo ${slug}: ${result.status}`);
+            // logRowError(`Vimeo ${slug}: ${result.status}`);
           }
         }
       }
@@ -386,36 +390,87 @@ function handleThumbnailInsertion(match, url, thumbCell, title, slug) {
 }
 
 function fetchArenaBlock(blockId, service) {
-  if (arenaBlockCache[blockId]) {
+  if (!blockId) return null;
+
+  // Return cached block if already fetched
+  if (Object.prototype.hasOwnProperty.call(arenaBlockCache, blockId)) {
     return arenaBlockCache[blockId];
   }
 
   const url = `https://api.are.na/v3/blocks/${blockId}`;
+  const maxAttempts = 5;
+  const requestDelay = 1000;
 
-  try {
-    const response = UrlFetchApp.fetch(url, {
-      headers: {
-        Authorization: "Bearer " + service.getAccessToken(),
-      },
-      muteHttpExceptions: true,
-    });
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      // Slow down requests to avoid Are.na rate limits
+      Utilities.sleep(requestDelay);
 
-    const status = response.getResponseCode();
+      const response = UrlFetchApp.fetch(url, {
+        headers: {
+          Authorization: "Bearer " + service.getAccessToken(),
+        },
+        muteHttpExceptions: true,
+      });
 
-    if (status < 200 || status >= 300) {
-      logRowError(`Are.na block ${blockId} failed: ${status}`);
+      const status = response.getResponseCode();
+
+      // Successful response
+      if (status >= 200 && status < 300) {
+        const block = JSON.parse(response.getContentText());
+
+        // Cache successful response
+        arenaBlockCache[blockId] = block;
+
+        return block;
+      }
+
+      // Rate limit handling
+      if (status === 429) {
+        const headers = response.getHeaders();
+        const retryAfter = headers["Retry-After"] || headers["retry-after"];
+
+        // Respect Retry-After if provided
+        let waitTime = retryAfter
+          ? Number(retryAfter) * 1000
+          : Math.pow(2, attempt) * 2000;
+
+        // Fallback if Retry-After is not a valid number
+        if (!Number.isFinite(waitTime) || waitTime <= 0) {
+          waitTime = Math.pow(2, attempt) * 2000;
+        }
+
+        // Prevent excessively long waits
+        waitTime = Math.min(waitTime, 30000);
+
+        if (attempt < maxAttempts - 1) {
+          Logger.log(
+            `Are.na rate limit reached for block ${blockId}. ` +
+              `Retrying in ${waitTime / 1000} seconds. ` +
+              `Attempt ${attempt + 1}/${maxAttempts}`,
+          );
+
+          Utilities.sleep(waitTime);
+          continue;
+        }
+      }
+
+      // Other HTTP errors
+      logRowError(`Are.na block ${blockId} failed: HTTP ${status}`);
+
+      return null;
+    } catch (error) {
+      logRowError(
+        `Are.na fetch failed for block ${blockId}: ${error.message || error}`,
+      );
+
       return null;
     }
-
-    const block = JSON.parse(response.getContentText());
-
-    arenaBlockCache[blockId] = block;
-
-    return block;
-  } catch (error) {
-    logRowError(`Are.na fetch failed: ${error.message || error}`);
-    return null;
   }
+
+  logRowError(`Are.na block ${blockId} failed after ${maxAttempts} attempts.`);
+
+  return null;
 }
 function getOrCreateAssetSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -442,7 +497,8 @@ function getOrCreateAssetSheet() {
       ]);
   }
 
-  assetSheet.setIndex(ss.getSheets().length);
+  ss.setActiveSheet(assetSheet);
+  ss.moveActiveSheet(ss.getSheets().length);
   return assetSheet;
 }
 
@@ -497,9 +553,9 @@ function getVimeoThumbnail(url) {
     const body = response.getContentText();
 
     if (code === 200) {
-      Logger.log(`Row ${index} : Vimeo response: ${code} | ${url}`);
+      // Logger.log(`Row ${index} : Vimeo response: ${code} | ${url}`);
     } else {
-      logRowError(`Vimeo response: ${code} | ${url}`);
+      // logRowError(`Vimeo response: ${code} | ${url}`);
     }
 
     if (code === 200) {
@@ -573,26 +629,57 @@ function seperateArenaIds(url) {
 }
 function updateArenaMatch(url) {
   const arenaIds = seperateArenaIds(url);
+
+  if (!arenaIds.length) {
+    return {
+      ids: [],
+      type: "",
+      thumb: {},
+    };
+  }
+
   const block = fetchArenaBlock(arenaIds[0], service);
+
+  // Stop if the block couldn't be retrieved
+  if (!block) {
+    logRowError(`Could not retrieve Are.na block ${arenaIds[0]}`);
+
+    return {
+      ids: arenaIds,
+      type: "",
+      thumb: {},
+    };
+  }
+
   let type = "";
   let thumb = {};
-  if (block.type == "Image") {
+
+  if (block.type === "Image") {
     type = "gallery";
-    thumb = block.image;
-  } else if (block.type == "Link") {
+    thumb = block.image || {};
+  } else if (block.type === "Link") {
     type = "link";
-    thumb = block.image;
-  } else if (block.type == "Attachment") {
-    if (block.attachment?.content_type == "audio/mpeg") {
+    thumb = block.image || {};
+  } else if (block.type === "Attachment") {
+    if (block.attachment?.content_type === "audio/mpeg") {
       type = "audio";
       thumb.link = audiothumb;
-    } else if (block.attachment?.content_type == "application/pdf") {
-      if (block.image) thumb = block.image;
-      else thumb.link = pdfthumb;
+    } else if (block.attachment?.content_type === "application/pdf") {
+      if (block.image) {
+        thumb = block.image;
+      } else {
+        thumb.link = pdfthumb;
+      }
+
       type = "pdf";
     }
   }
-  return { ids: arenaIds, type: type, thumb: thumb };
+
+  return {
+    ids: arenaIds,
+    type: type,
+    thumb: thumb,
+  };
 }
 function getArenaService() {
   return OAuth2.createService("Arena")
