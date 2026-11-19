@@ -359,7 +359,7 @@ html.archive-is-loading body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color--backdrop);
+  background: var(--color--backdrop) !important;
   pointer-events: none;
 }
 

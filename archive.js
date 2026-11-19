@@ -56,7 +56,6 @@ function initializePageMarkup() {
         class="archive-loading__video"
         autoplay
         muted
-        loop
         playsinline
         aria-hidden="true"
         src="https://s3.amazonaws.com/arena_images-temp/uploads%2Fd91cbed1-97f0-453e-80ac-e01fc97ce0a2%2Floadings+%281%29.mp4"
@@ -260,6 +259,7 @@ const archiveRandomizerCardCount = 8;
 const archiveWelcomeStorageKey = "reelAsianArchiveWelcomeSeen";
 const archiveNavigationStateKey = "reelAsianArchiveNavigationState";
 let archiveRenderRequestId = 0;
+let archiveHasRendered = false;
 
 /* -------------------------------------------
 __
@@ -544,6 +544,7 @@ async function hideArchiveLoading() {
   if (archiveDataWasCached) {
     archive.loading.hidden = true;
     archive.loading.setAttribute("aria-busy", "false");
+    archive.loading.querySelector("video")?.pause();
     document.documentElement.classList.remove("archive-is-loading");
     return;
   }
@@ -681,7 +682,7 @@ async function renderArchive(animateTiger = false) {
   }
 
   const requestId = ++archiveRenderRequestId;
-  if (archive.renderLoading) {
+  if (archive.renderLoading && archiveHasRendered) {
     archive.renderLoading.hidden = false;
     const video = archive.renderLoading.querySelector("video");
     if (video && (video.hasAttribute("src") || video.querySelector("source"))) {
@@ -736,6 +737,7 @@ async function renderArchive(animateTiger = false) {
       archive.renderLoading.querySelector("video")?.pause();
     }
     archive.container.removeAttribute("aria-busy");
+    archiveHasRendered = true;
     requestAnimationFrame(() => {
       archive.container.classList.remove("is-transitioning-up");
     });
